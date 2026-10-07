@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#050811">
+<title>ECHO RIFT</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+<main id="app" class="ui-blocked">
+<canvas id="game" width="960" height="600" aria-label="ECHO RIFT game field"></canvas>
+<section id="hud">
+<div class="brand">ECHO RIFT <span>自分の3秒前が武器になる</span></div>
+<div class="stats"><span id="time">08:00</span><span id="level">LV 1</span><span id="score">0</span></div>
+<div class="bars"><i id="hpbar"></i><b id="xpbar"></b></div>
+</section>
+<section id="start" class="panel">
+<p class="eyebrow">8 MINUTE ECHO SURVIVAL</p>
+<h1>今の逃げ道が<br><em>3秒後の攻撃になる。</em></h1>
+<p>移動すると、その軌跡を残像が再演します。敵を引きつけ、未来の自分に撃たせてください。</p>
+<div class="keys"><span>WASD / 矢印　移動</span><span>SPACE　位相ダッシュ</span></div>
+<button id="startBtn">RIFTへ入る</button>
+</section>
+<section id="upgrade" class="panel hidden">
+<p class="eyebrow">SIGNAL MUTATION</p>
+<h2>残響を変異させる</h2>
+<div id="upgradeChoices"></div>
+</section>
+<section id="result" class="panel hidden">
+<p class="eyebrow" id="resultLabel">RUN COMPLETE</p>
+<h2 id="resultTitle">残響は途切れなかった。</h2>
+<div id="resultStats"></div>
+<button id="retryBtn">もう一度潜る</button>
+</section>
+<div id="dashButton" aria-label="dash">DASH</div>
+<div id="joystick"><i></i></div>
+<div id="toast"></div>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

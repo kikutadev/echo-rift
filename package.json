@@ -1,0 +1,1 @@
+{"name":"echo-rift-autonomous-benchmark","private":true,"type":"module","scripts":{"simulate":"node scripts/simulate.mjs","test":"node scripts/test.mjs"}}
