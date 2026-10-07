@@ -10,9 +10,17 @@ let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[];
 
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
+
+// iOS Safari上ではゲーム領域のブラウザズーム・スクロールジェスチャーを使わせない。
+for(const type of ["gesturestart","gesturechange","gestureend"]){
+ window.addEventListener(type,e=>e.preventDefault(),{passive:false});
+}
+document.addEventListener("touchmove",e=>{
+ if(e.touches.length>1)e.preventDefault();
+},{passive:false});
 function setWorldCamera(){
- const portrait=canvas.height>canvas.width*1.25,intro=app.classList.contains("intro");
- const scale=portrait?canvas.width/(intro?520:360):Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
+ const portrait=canvas.height>canvas.width*1.25;
+ const scale=portrait?canvas.width/420:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
  const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player;
  const camX=portrait?p.x:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
  const camY=portrait?p.y:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
