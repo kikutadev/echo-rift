@@ -23,3 +23,65 @@ button{border:0;border-radius:13px;padding:13px 22px;font-weight:900;letter-spac
 #toast{position:absolute;z-index:7;left:50%;top:20%;transform:translateX(-50%);font-size:12px;font-weight:900;letter-spacing:.18em;color:#9cf4ff;opacity:0;transition:opacity .18s;text-shadow:0 0 20px #50e4ff}
 #toast.show{opacity:1}
 @media(max-width:720px),(pointer:coarse){#dashButton{display:grid}#joystick{display:block}.panel{padding:26px 22px;border-radius:20px}.panel h1{font-size:42px}.brand span{display:none}.stats{gap:10px;font-size:11px}#hud{left:14px;right:14px}.keys{display:none}}
+
+
+#hud{transition:opacity .25s ease}
+#app.intro #hud{opacity:0}
+
+.start-screen{
+  position:absolute;inset:0;z-index:9;cursor:pointer;overflow:hidden;
+  background:
+    linear-gradient(90deg,rgba(2,4,9,.88) 0%,rgba(2,4,9,.5) 38%,rgba(2,4,9,.08) 68%,rgba(2,4,9,.18) 100%),
+    linear-gradient(0deg,rgba(2,4,9,.88) 0%,rgba(2,4,9,0) 48%);
+}
+.start-vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 180px 30px rgba(0,0,0,.52)}
+.start-copy{
+  position:absolute;left:clamp(28px,5vw,76px);bottom:clamp(38px,8vh,92px);
+  width:min(720px,calc(100vw - 56px));text-shadow:0 4px 30px rgba(0,0,0,.85)
+}
+.start-kicker{margin:0 0 14px;color:#7cf3ff;font-size:13px;font-weight:950;letter-spacing:.24em}
+.start-copy h1{
+  margin:0;max-width:760px;color:#fff;font-size:clamp(46px,6.2vw,90px);line-height:.94;letter-spacing:-.055em;
+}
+.start-copy h1 em{display:inline-block;margin-top:8px;font-style:normal;color:#82f4ff;text-shadow:0 0 30px rgba(78,231,255,.35)}
+.start-tagline{margin:22px 0 24px;color:#d3e7ec;font-size:clamp(14px,1.35vw,19px);font-weight:750;letter-spacing:.01em}
+#startBtn{
+  min-width:260px;padding:17px 28px;border-radius:999px;font-size:18px;
+  background:linear-gradient(135deg,#82f7ff 0%,#a7ffbf 100%);
+  box-shadow:0 0 0 0 rgba(111,241,255,.45),0 18px 45px rgba(58,225,255,.22);
+  animation:playPulse 1.8s ease-out infinite;transform:translateZ(0)
+}
+#startBtn span{display:inline-block;margin-right:9px;font-size:14px}
+.tap-hint{margin:12px 0 0;color:#84a5af;font-size:11px;font-weight:750;letter-spacing:.08em}
+@keyframes playPulse{0%{box-shadow:0 0 0 0 rgba(111,241,255,.4),0 18px 45px rgba(58,225,255,.22)}70%{box-shadow:0 0 0 14px rgba(111,241,255,0),0 18px 45px rgba(58,225,255,.22)}100%{box-shadow:0 0 0 0 rgba(111,241,255,0),0 18px 45px rgba(58,225,255,.22)}}
+
+.tutorial{
+  position:absolute;z-index:7;left:50%;top:max(88px,calc(env(safe-area-inset-top) + 72px));transform:translateX(-50%);
+  width:min(520px,calc(100vw - 32px));padding:14px 18px;border:1px solid rgba(118,235,255,.3);border-radius:16px;
+  background:rgba(5,12,21,.86);backdrop-filter:blur(12px);text-align:center;box-shadow:0 16px 45px rgba(0,0,0,.35);
+  animation:tutorialIn .25s ease-out
+}
+.tutorial strong{display:block;color:#fff;font-size:19px;letter-spacing:-.02em}
+.tutorial span{display:block;margin-top:3px;color:#87effa;font-size:13px;font-weight:800}
+.tutorial small{display:block;margin-top:7px;color:#8ca6af;font-size:10px;font-weight:750;letter-spacing:.04em}
+.tutorial-mobile{display:none!important}
+@keyframes tutorialIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+@media(max-width:720px),(pointer:coarse){
+  .start-screen{
+    background:
+      linear-gradient(0deg,rgba(2,4,9,.96) 0%,rgba(2,4,9,.63) 42%,rgba(2,4,9,.04) 72%),
+      linear-gradient(90deg,rgba(2,4,9,.18),rgba(2,4,9,.05));
+  }
+  .start-copy{left:18px;right:18px;bottom:max(28px,calc(env(safe-area-inset-bottom) + 22px));width:auto}
+  .start-kicker{margin-bottom:10px;font-size:11px}
+  .start-copy h1{font-size:clamp(39px,11.5vw,52px);line-height:.96}
+  .start-tagline{margin:16px 0 18px;font-size:14px;line-height:1.45}
+  #startBtn{width:100%;min-width:0;padding:16px 20px;font-size:17px}
+  .tap-hint{text-align:center;margin-top:10px}
+  .tutorial{top:max(72px,calc(env(safe-area-inset-top) + 60px));padding:12px 14px}
+  .tutorial strong{font-size:18px}
+  .tutorial span{font-size:12px}
+  .tutorial-desktop{display:none!important}
+  .tutorial-mobile{display:block!important}
+}

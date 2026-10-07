@@ -4,18 +4,35 @@ const app=document.querySelector("#app"),canvas=document.querySelector("#game"),
 const startPanel=document.querySelector("#start"),upgradePanel=document.querySelector("#upgrade"),resultPanel=document.querySelector("#result");
 const startBtn=document.querySelector("#startBtn"),retryBtn=document.querySelector("#retryBtn"),choices=document.querySelector("#upgradeChoices");
 const hpbar=document.querySelector("#hpbar"),xpbar=document.querySelector("#xpbar"),timeEl=document.querySelector("#time"),levelEl=document.querySelector("#level"),scoreEl=document.querySelector("#score");
-const toast=document.querySelector("#toast"),joystick=document.querySelector("#joystick"),stick=document.querySelector("#joystick i"),dashButton=document.querySelector("#dashButton");
-let game=new EchoRiftGame({seed:Date.now()&0xffffffff}),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,eventSeen=0,toastTimer=0,echoNotice=false;
+const toast=document.querySelector("#toast"),tutorial=document.querySelector("#tutorial"),joystick=document.querySelector("#joystick"),stick=document.querySelector("#joystick i"),dashButton=document.querySelector("#dashButton");
+let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,eventSeen=0,toastTimer=0,tutorialTimer=0,echoNotice=false;
 let touchVec={x:0,y:0},joyPointer=null,particles=[];
 
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function setWorldCamera(){
- const scale=Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
- const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player,portrait=canvas.height>canvas.width*1.25;
+ const portrait=canvas.height>canvas.width*1.25,intro=app.classList.contains("intro");
+ const scale=intro&&portrait?canvas.width/520:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
+ const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player;
  const camX=portrait?p.x:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
  const camY=portrait?p.y:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
  ctx.setTransform(scale,0,0,scale,canvas.width/2-camX*scale,canvas.height/2-camY*scale);
+}
+
+function demoInput(g){
+ const a=g.time*.58;
+ return{
+   dx:Math.cos(a)+Math.sin(g.time*.17)*.32,
+   dy:Math.sin(a*.83)+Math.cos(g.time*.11)*.22,
+   dash:Math.sin(g.time*1.9)>.985
+ };
+}
+function makeAttractGame(){
+ const g=new EchoRiftGame({seed:0xEC4017,autoUpgradePolicy:choices=>choices[0]?.id});
+ g.player.maxHp=9999;g.player.hp=9999;
+ for(let i=0;i<3200&&g.status==="playing";i++)g.step(.05,demoInput(g));
+ g.events=[];
+ return g;
 }
 
 const rnd=(a,b)=>a+Math.random()*(b-a);
@@ -46,11 +63,23 @@ function consumeEvents(){
 }
 
 function reset(){
- game=new EchoRiftGame({seed:(Date.now()^Math.floor(Math.random()*1e9))>>>0});started=true;last=performance.now();eventSeen=0;echoNotice=false;particles=[];
- startPanel.classList.add("hidden");upgradePanel.classList.add("hidden");resultPanel.classList.add("hidden");app.classList.remove("ui-blocked");
+ game=new EchoRiftGame({seed:(Date.now()^Math.floor(Math.random()*1e9))>>>0});
+ const starters=[
+   ["chaser",315,300],["chaser",645,300],["chaser",480,145],
+   ["scout",480,455],["chaser",350,185]
+ ];
+ for(const [type,x,y] of starters){
+   game.spawn(type);
+   const enemy=game.enemies[game.enemies.length-1];
+   enemy.x=x;enemy.y=y;
+ }
+ started=true;last=performance.now();eventSeen=0;echoNotice=false;particles=[];tutorialTimer=3.6;
+ startPanel.classList.add("hidden");upgradePanel.classList.add("hidden");resultPanel.classList.add("hidden");tutorial.classList.remove("hidden");app.classList.remove("ui-blocked","intro");
 }
-startBtn.addEventListener("click",reset);retryBtn.addEventListener("click",reset);
-window.addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(e.code==="Space")dashQueued=true;
+startPanel.addEventListener("click",reset);retryBtn.addEventListener("click",reset);
+window.addEventListener("keydown",e=>{
+ if(!started&&["Enter","Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyW","KeyA","KeyS","KeyD"].includes(e.code))reset();
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code))e.preventDefault();keys.add(e.code);if(e.code==="Space")dashQueued=true;
  if(game.status==="upgrade"&&["Digit1","Digit2","Digit3"].includes(e.code)){const idx=Number(e.code.slice(-1))-1;if(game.pending[idx])game.chooseUpgrade(game.pending[idx].id)}
 });
 window.addEventListener("keyup",e=>keys.delete(e.code));
@@ -122,8 +151,19 @@ function updateUi(){
 }
 
 function frame(now){
- const dt=Math.min(.033,(now-last)/1000);last=now;if(started&&game.status!=="upgrade"&&game.status!=="won"&&game.status!=="lost")game.step(dt,input());
- updateParticles(dt);consumeEvents();if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)toast.classList.remove("show")}
+ const dt=Math.min(.033,(now-last)/1000);last=now;
+ if(!started){
+   if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();eventSeen=0;particles=[]}
+   game.step(dt,demoInput(game));
+ }else if(game.status!=="upgrade"&&game.status!=="won"&&game.status!=="lost"){
+   game.step(dt,input());
+ }
+ updateParticles(dt);consumeEvents();
+ if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)toast.classList.remove("show")}
+ if(tutorialTimer>0){
+   tutorialTimer-=dt;
+   if(game.status==="upgrade"||tutorialTimer<=0)tutorial.classList.add("hidden");
+ }
  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#020307";ctx.fillRect(0,0,canvas.width,canvas.height);setWorldCamera();renderBackground(game.time);renderWorld();ctx.setTransform(1,0,0,1,0,0);updateUi();requestAnimationFrame(frame);
 }
 window.__echoRift={get game(){return game},start:reset,metrics:()=>game.metrics()};

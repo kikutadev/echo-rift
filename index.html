@@ -9,20 +9,29 @@
 <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-<main id="app" class="ui-blocked">
+<main id="app" class="ui-blocked intro">
 <canvas id="game" width="960" height="600" aria-label="ECHO RIFT game field"></canvas>
 <section id="hud">
 <div class="brand">ECHO RIFT <span>自分の3秒前が武器になる</span></div>
 <div class="stats"><span id="time">08:00</span><span id="level">LV 1</span><span id="score">0</span></div>
 <div class="bars"><i id="hpbar"></i><b id="xpbar"></b></div>
 </section>
-<section id="start" class="panel">
-<p class="eyebrow">8 MINUTE ECHO SURVIVAL</p>
-<h1>今の逃げ道が<br><em>3秒後の攻撃になる。</em></h1>
-<p>移動すると、その軌跡を残像が再演します。敵を引きつけ、未来の自分に撃たせてください。</p>
-<div class="keys"><span>WASD / 矢印　移動</span><span>SPACE　位相ダッシュ</span></div>
-<button id="startBtn">RIFTへ入る</button>
+<section id="start" class="start-screen" aria-label="ゲーム開始">
+<div class="start-vignette"></div>
+<div class="start-copy">
+<p class="start-kicker">ECHO RIFT</p>
+<h1>逃げた軌跡が、<br><em>3秒後に敵を撃つ。</em></h1>
+<p class="start-tagline">動くだけで攻撃になる。8分間、生き残れ。</p>
+<button id="startBtn"><span aria-hidden="true">▶</span> 今すぐ遊ぶ</button>
+<p class="tap-hint">画面のどこをタップしても開始</p>
+</div>
 </section>
+<div id="tutorial" class="tutorial hidden" aria-live="polite">
+<strong>まず、動け。</strong>
+<span>3秒後の自分が同じ軌跡から追撃する</span>
+<small class="tutorial-desktop">WASD / 矢印で移動　・　SPACEでダッシュ</small>
+<small class="tutorial-mobile">左で移動　・　右でダッシュ</small>
+</div>
 <section id="upgrade" class="panel hidden">
 <p class="eyebrow">SIGNAL MUTATION</p>
 <h2>残響を変異させる</h2>

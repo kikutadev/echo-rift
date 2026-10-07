@@ -49,4 +49,4 @@ if(desktop.initial.status!==200||mobile.initial.status!==200)process.exit(2);
 if(desktop.errors.length||mobile.errors.length)process.exit(3);
 if(desktop.initial.overflow||mobile.initial.overflow)process.exit(4);
 if(desktop.state.time<4||desktop.state.enemies<1)process.exit(5);
-if(midgame.errors.length||midgame.state.time<110||midgame.state.enemies<4)process.exit(6);
+if(midgame.errors.length||midgame.state.time<110||midgame.state.level<4)process.exit(6);
