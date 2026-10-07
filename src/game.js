@@ -65,7 +65,11 @@ spawn(type=null){
 const t=this.time,r=this.rng.next();
 if(!type){if(t<55)type=r<.82?"chaser":"scout";else if(t<150)type=r<.52?"chaser":r<.77?"scout":"shooter";else if(t<300)type=r<.36?"chaser":r<.58?"scout":r<.83?"shooter":"brute";else type=r<.26?"chaser":r<.46?"scout":r<.73?"shooter":"brute"}
 const s=STATS[type],edge=this.rng.int(0,3);let x,y;
-if(edge===0){x=-30;y=this.rng.range(0,600)}else if(edge===1){x=990;y=this.rng.range(0,600)}else if(edge===2){x=this.rng.range(0,960);y=-30}else{x=this.rng.range(0,960);y=630}
+if(t<15){
+  const a=this.rng.range(0,TAU),d=this.rng.range(145,215);
+  x=clamp(this.player.x+Math.cos(a)*d,28,932);
+  y=clamp(this.player.y+Math.sin(a)*d,28,572);
+}else if(edge===0){x=-30;y=this.rng.range(0,600)}else if(edge===1){x=990;y=this.rng.range(0,600)}else if(edge===2){x=this.rng.range(0,960);y=-30}else{x=this.rng.range(0,960);y=630}
 const scale=1+Math.max(0,t-100)/900;
 this.enemies.push({id:this.nextId++,type,x,y,r:s.r,hp:s.hp*scale,maxHp:s.hp*scale,speed:s.speed*Math.min(1.28,1+t/1800),damage:s.damage,xp:s.xp,score:s.score,shootT:this.rng.range(.5,1.6),auxT:this.rng.range(1.2,2.6),flash:0});
 }
@@ -104,7 +108,8 @@ while(this.spawnBudget>=1){this.spawnBudget--;this.spawn();if(this.time>330&&thi
 }
 updatePlayer(dt,input){
 const p=this.player;p.fireT-=dt;p.dashT=Math.max(0,p.dashT-dt);p.inv=Math.max(0,p.inv-dt);let m=norm(input.dx||0,input.dy||0);if(!(input.dx||input.dy))m={x:0,y:0};
-if(input.dash&&p.dashT<=0&&p.dashActive<=0&&(m.x||m.y)){p.dashActive=.18;p.dashT=p.dashCd;p.inv=Math.max(p.inv,.42);p.dashHit=new Set();p.dx=m.x;p.dy=m.y;this.rifts.push({x:p.x,y:p.y,age:0,damage:p.dashDamage,radius:p.riftRadius,boom:false});this.emit("dash")}
+if((m.x||m.y)&&p.dashActive<=0){p.dx=m.x;p.dy=m.y}
+if(input.dash&&p.dashT<=0&&p.dashActive<=0){const d=(m.x||m.y)?m:{x:p.dx,y:p.dy};p.dashActive=.18;p.dashT=p.dashCd;p.inv=Math.max(p.inv,.42);p.dashHit=new Set();p.dx=d.x;p.dy=d.y;this.rifts.push({x:p.x,y:p.y,age:0,damage:p.dashDamage,radius:p.riftRadius,boom:false});this.emit("dash")}
 let speed=p.speed;if(p.dashActive>0){p.dashActive-=dt;m={x:p.dx,y:p.dy};speed=p.dashSpeed;if(p.dashActive<=0)this.rifts.push({x:p.x,y:p.y,age:0,damage:p.dashDamage,radius:p.riftRadius,boom:false})}
 p.x=clamp(p.x+m.x*speed*dt,18,942);p.y=clamp(p.y+m.y*speed*dt,18,582);
 if(p.dashActive>0){for(const e of this.enemies){if(e.hp<=0||p.dashHit.has(e.id))continue;const rr=p.r+e.r+10;if((e.x-p.x)**2+(e.y-p.y)**2<=rr*rr){p.dashHit.add(e.id);this.damageEnemy(e,p.dashDamage*.72,"rift");this.emit("dashHit",{x:e.x,y:e.y})}}}

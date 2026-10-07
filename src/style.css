@@ -85,3 +85,108 @@ button{border:0;border-radius:13px;padding:13px 22px;font-weight:900;letter-spac
   .tutorial-desktop{display:none!important}
   .tutorial-mobile{display:block!important}
 }
+
+
+/* Mobile-first gameplay HUD */
+#hud{
+  top:max(12px,env(safe-area-inset-top));
+  left:16px;right:16px;
+  display:flex;flex-direction:column;gap:7px;
+  text-shadow:0 2px 12px #000;
+}
+.hud-main{display:flex;align-items:center;justify-content:space-between;min-height:24px}
+.hud-time{font-size:18px;font-weight:950;letter-spacing:.06em;font-variant-numeric:tabular-nums;color:#fff}
+.hud-level{font-size:11px;font-weight:900;letter-spacing:.08em;color:#bfeef5;padding:5px 8px;border:1px solid rgba(124,227,244,.25);border-radius:999px;background:rgba(5,12,20,.42)}
+.hud-bars{display:grid;gap:3px}
+.hp-track,.xp-track{position:relative;overflow:hidden;border-radius:999px;background:rgba(84,107,129,.28)}
+.hp-track{height:5px}
+.xp-track{height:2px}
+.hp-track i,.xp-track b{display:block;width:100%;height:100%;transform-origin:left center}
+.hp-track i{background:linear-gradient(90deg,#ff547f,#ff9c72)}
+.xp-track b{background:#62ecff;box-shadow:0 0 8px rgba(98,236,255,.7)}
+.hud-score{display:none}
+
+/* Plain, functional start screen */
+.start-copy{width:min(520px,calc(100vw - 48px))}
+.start-copy h1{
+  margin:0;color:#fff;font-size:clamp(48px,6vw,76px);line-height:.95;
+  letter-spacing:-.055em;text-shadow:0 4px 30px rgba(0,0,0,.9)
+}
+.start-mode{margin:10px 0 18px;color:#8cf4ff;font-size:15px;font-weight:900;letter-spacing:.12em}
+.start-rules{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.start-rules span{padding:7px 10px;border:1px solid rgba(120,218,235,.25);border-radius:999px;background:rgba(5,12,20,.58);color:#c3dce2;font-size:11px;font-weight:800}
+#startBtn{min-width:240px}
+.start-kicker,.start-tagline,.tap-hint{display:none!important}
+
+/* Thumb controls */
+#joystick{
+  left:max(22px,env(safe-area-inset-left));
+  width:124px;height:124px;
+  background:rgba(5,15,24,.34);
+  border:1px solid rgba(115,235,255,.28);
+  box-shadow:inset 0 0 36px rgba(70,224,255,.05)
+}
+#joystick i{
+  left:36px;top:36px;width:52px;height:52px;
+  background:rgba(129,241,255,.92);
+  box-shadow:0 0 28px rgba(87,229,255,.42)
+}
+#dashButton{
+  right:max(24px,env(safe-area-inset-right));
+  width:92px;height:92px;
+  font-size:12px;background:rgba(8,25,38,.58);
+  border:1px solid rgba(117,235,255,.5)
+}
+#dashButton,#joystick{bottom:max(22px,calc(env(safe-area-inset-bottom) + 14px))}
+
+/* Clearer tutorial */
+.tutorial strong{font-size:16px}
+.tutorial span{font-size:11px;color:#8fdce8}
+
+/* Mobile sheets instead of desktop-style centered modals */
+@media(max-width:720px),(pointer:coarse){
+  #hud{left:14px;right:14px;top:max(10px,env(safe-area-inset-top));gap:6px}
+  .hud-time{font-size:17px}
+  .hud-level{font-size:10px;padding:4px 7px}
+  .start-copy{left:18px;right:18px;bottom:max(22px,calc(env(safe-area-inset-bottom) + 16px));width:auto}
+  .start-copy h1{font-size:44px;line-height:.92}
+  .start-mode{font-size:13px;margin:8px 0 14px}
+  .start-rules{gap:6px;margin-bottom:14px}
+  .start-rules span{font-size:10px;padding:6px 8px}
+  #startBtn{width:100%;padding:16px 18px;font-size:17px}
+  .panel{
+    left:0;right:0;top:auto;bottom:0;transform:none;
+    width:100%;max-height:min(76dvh,640px);overflow:auto;
+    padding:22px 18px max(22px,calc(env(safe-area-inset-bottom) + 16px));
+    border-radius:24px 24px 0 0;border-left:0;border-right:0;border-bottom:0;
+    background:linear-gradient(180deg,rgba(10,19,32,.985),rgba(4,8,15,.995));
+  }
+  .panel h2{font-size:28px;letter-spacing:-.035em}
+  #upgradeChoices{gap:9px;margin-top:16px}
+  .upgrade{min-height:66px;padding:12px 14px;border-radius:14px;grid-template-columns:38px 1fr auto}
+  .upgrade strong{font-size:14px}
+  .upgrade small{font-size:11px;line-height:1.35}
+  #resultStats{margin:18px 0}
+  .tutorial{top:max(60px,calc(env(safe-area-inset-top) + 48px));width:calc(100vw - 28px);padding:10px 12px}
+}
+
+
+/* Dynamic touch controls */
+@media(max-width:720px),(pointer:coarse){
+  #joystick{
+    display:none;
+    bottom:auto;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .08s ease;
+  }
+  #joystick.active{display:block;opacity:1}
+  #dashButton{
+    width:78px;height:78px;
+    right:max(18px,env(safe-area-inset-right));
+    bottom:max(18px,calc(env(safe-area-inset-bottom) + 10px));
+    font-size:11px;
+    transition:transform .08s ease,background .08s ease;
+  }
+  #dashButton.pressed{transform:scale(.9);background:rgba(63,233,255,.22)}
+}

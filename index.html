@@ -11,39 +11,48 @@
 <body>
 <main id="app" class="ui-blocked intro">
 <canvas id="game" width="960" height="600" aria-label="ECHO RIFT game field"></canvas>
-<section id="hud">
-<div class="brand">ECHO RIFT <span>自分の3秒前が武器になる</span></div>
-<div class="stats"><span id="time">08:00</span><span id="level">LV 1</span><span id="score">0</span></div>
-<div class="bars"><i id="hpbar"></i><b id="xpbar"></b></div>
+<section id="hud" aria-label="プレイ情報">
+<div class="hud-main">
+<span id="time" class="hud-time">08:00</span>
+<span id="level" class="hud-level">LV 1</span>
+</div>
+<div class="hud-bars">
+<div class="hp-track"><i id="hpbar"></i></div>
+<div class="xp-track"><b id="xpbar"></b></div>
+</div>
+<span id="score" class="hud-score">0</span>
 </section>
 <section id="start" class="start-screen" aria-label="ゲーム開始">
 <div class="start-vignette"></div>
 <div class="start-copy">
-<p class="start-kicker">ECHO RIFT</p>
-<h1>逃げた軌跡が、<br><em>3秒後に敵を撃つ。</em></h1>
-<p class="start-tagline">動くだけで攻撃になる。8分間、生き残れ。</p>
-<button id="startBtn"><span aria-hidden="true">▶</span> 今すぐ遊ぶ</button>
-<p class="tap-hint">画面のどこをタップしても開始</p>
+<h1>ECHO RIFT</h1>
+<p class="start-mode">8分サバイバル</p>
+<div class="start-rules">
+<span>移動：左スティック</span>
+<span>攻撃：自動</span>
+<span>ダッシュ：右ボタン</span>
+</div>
+<button id="startBtn"><span aria-hidden="true">▶</span> タップして開始</button>
 </div>
 </section>
 <div id="tutorial" class="tutorial hidden" aria-live="polite">
-<strong>まず、動け。</strong>
-<span>3秒後の自分が同じ軌跡から追撃する</span>
+<strong>左で移動　右でダッシュ</strong>
+<span>攻撃は自動です</span>
 <small class="tutorial-desktop">WASD / 矢印で移動　・　SPACEでダッシュ</small>
-<small class="tutorial-mobile">左で移動　・　右でダッシュ</small>
+<small class="tutorial-mobile">3秒前の動きが残像として攻撃します</small>
 </div>
 <section id="upgrade" class="panel hidden">
-<p class="eyebrow">SIGNAL MUTATION</p>
-<h2>残響を変異させる</h2>
+
+<h2>強化を1つ選ぶ</h2>
 <div id="upgradeChoices"></div>
 </section>
 <section id="result" class="panel hidden">
-<p class="eyebrow" id="resultLabel">RUN COMPLETE</p>
-<h2 id="resultTitle">残響は途切れなかった。</h2>
+<p class="eyebrow" id="resultLabel"></p>
+<h2 id="resultTitle">結果</h2>
 <div id="resultStats"></div>
-<button id="retryBtn">もう一度潜る</button>
+<button id="retryBtn">もう一度遊ぶ</button>
 </section>
-<div id="dashButton" aria-label="dash">DASH</div>
+<div id="dashButton" aria-label="ダッシュ">ダッシュ</div>
 <div id="joystick"><i></i></div>
 <div id="toast"></div>
 </main>

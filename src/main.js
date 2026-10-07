@@ -6,13 +6,13 @@ const startBtn=document.querySelector("#startBtn"),retryBtn=document.querySelect
 const hpbar=document.querySelector("#hpbar"),xpbar=document.querySelector("#xpbar"),timeEl=document.querySelector("#time"),levelEl=document.querySelector("#level"),scoreEl=document.querySelector("#score");
 const toast=document.querySelector("#toast"),tutorial=document.querySelector("#tutorial"),joystick=document.querySelector("#joystick"),stick=document.querySelector("#joystick i"),dashButton=document.querySelector("#dashButton");
 let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,eventSeen=0,toastTimer=0,tutorialTimer=0,echoNotice=false;
-let touchVec={x:0,y:0},joyPointer=null,particles=[];
+let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[];
 
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 function setWorldCamera(){
  const portrait=canvas.height>canvas.width*1.25,intro=app.classList.contains("intro");
- const scale=intro&&portrait?canvas.width/520:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
+ const scale=portrait?canvas.width/(intro?520:360):Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
  const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player;
  const camX=portrait?p.x:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
  const camY=portrait?p.y:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
@@ -50,14 +50,14 @@ function consumeEvents(){
  if(eventSeen>events.length)eventSeen=0;
  for(let i=eventSeen;i<events.length;i++){
    const e=events[i];
-   if(e.type==="kill"){burst(e.x,e.y,e.type==="boss"?"#ffffff":e.source==="echo"?"#5bf4ff":"#ff6ba7",e.type==="boss"?36:7);if(e.type==="boss"){showToast("WARDEN BREAK");playTone(90,.35,.04)}}
+   if(e.type==="kill"){burst(e.x,e.y,e.type==="boss"?"#ffffff":e.source==="echo"?"#5bf4ff":"#ff6ba7",e.type==="boss"?36:7);if(e.type==="boss"){showToast("ボス撃破");playTone(90,.35,.04)}}
    if(e.type==="hurt"){playTone(95,.12,.03)}
    if(e.type==="dash"){playTone(330,.05,.018)}
    if(e.type==="level"){playTone(660,.12,.025)}
-   if(e.type==="boss"){showToast("WARDEN SIGNAL DETECTED");playTone(74,.3,.035)}
+   if(e.type==="boss"){showToast("ボス出現");playTone(74,.3,.035)}
    if(e.type==="rift"){burst(e.x,e.y,"#ca72ff",18)}
    if(e.type==="dashHit"){burst(e.x,e.y,"#e28cff",10);playTone(250,.045,.018)}
-   if(e.type==="echo"){playTone(480,.06,.012);if(!echoNotice){echoNotice=true;showToast("3秒前の自分が再演している")}}
+   if(e.type==="echo"){playTone(480,.06,.012);if(!echoNotice){echoNotice=true;showToast("残像が攻撃開始")}}
  }
  eventSeen=events.length;
 }
@@ -85,15 +85,33 @@ window.addEventListener("keydown",e=>{
 window.addEventListener("keyup",e=>keys.delete(e.code));
 
 function updateJoystick(e){
- const r=joystick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,dx=e.clientX-cx,dy=e.clientY-cy,d=Math.hypot(dx,dy),max=r.width*.34,k=Math.min(1,d/max);
- touchVec=d?{x:dx/d*k,y:dy/d*k}:{x:0,y:0};stick.style.transform=`translate(${touchVec.x*max}px,${touchVec.y*max}px)`;
+ const dx=e.clientX-joyOrigin.x,dy=e.clientY-joyOrigin.y,d=Math.hypot(dx,dy),max=42,k=Math.min(1,d/max);
+ touchVec=d?{x:dx/d*k,y:dy/d*k}:{x:0,y:0};
+ stick.style.transform=`translate(${touchVec.x*max}px,${touchVec.y*max}px)`;
 }
-joystick.addEventListener("pointerdown",e=>{joyPointer=e.pointerId;joystick.setPointerCapture(e.pointerId);updateJoystick(e)});
-joystick.addEventListener("pointermove",e=>{if(e.pointerId===joyPointer)updateJoystick(e)});
-function endJoy(e){if(e.pointerId!==joyPointer)return;joyPointer=null;touchVec={x:0,y:0};stick.style.transform="translate(0,0)"}
-joystick.addEventListener("pointerup",endJoy);joystick.addEventListener("pointercancel",endJoy);
-dashButton.addEventListener("pointerdown",e=>{e.preventDefault();dashQueued=true;dashButton.style.transform="scale(.9)"});
-dashButton.addEventListener("pointerup",()=>dashButton.style.transform="");
+function beginTouchControl(e){
+ if(!started||game.status!=="playing"||app.classList.contains("ui-blocked"))return;
+ if(e.clientX<innerWidth*.58){
+   joyPointer=e.pointerId;joyOrigin={x:e.clientX,y:e.clientY};
+   const size=124,left=Math.max(8,Math.min(innerWidth-size-8,e.clientX-size/2)),top=Math.max(80,Math.min(innerHeight-size-8,e.clientY-size/2));
+   joystick.style.left=left+"px";joystick.style.top=top+"px";
+   joystick.classList.add("active");canvas.setPointerCapture(e.pointerId);updateJoystick(e);
+ }else if(e.clientY>innerHeight*.34){
+   dashQueued=true;dashButton.classList.add("pressed");
+   setTimeout(()=>dashButton.classList.remove("pressed"),110);
+ }
+}
+function moveTouchControl(e){if(e.pointerId===joyPointer)updateJoystick(e)}
+function endJoy(e){
+ if(e.pointerId!==joyPointer)return;
+ joyPointer=null;touchVec={x:0,y:0};stick.style.transform="translate(0,0)";joystick.classList.remove("active");
+}
+canvas.addEventListener("pointerdown",beginTouchControl);
+canvas.addEventListener("pointermove",moveTouchControl);
+canvas.addEventListener("pointerup",endJoy);canvas.addEventListener("pointercancel",endJoy);
+dashButton.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();dashQueued=true;dashButton.classList.add("pressed")});
+dashButton.addEventListener("pointerup",()=>dashButton.classList.remove("pressed"));
+dashButton.addEventListener("pointercancel",()=>dashButton.classList.remove("pressed"));
 
 function input(){
  let x=(keys.has("KeyD")||keys.has("ArrowRight")?1:0)-(keys.has("KeyA")||keys.has("ArrowLeft")?1:0);
@@ -147,7 +165,7 @@ function updateUi(){
  hpbar.style.transform=`scaleX(${Math.max(0,s.hp/s.maxHp)})`;xpbar.style.transform=`scaleX(${Math.min(1,s.xp/s.xpNeed)})`;
  if(game.status==="upgrade"&&upgradeShownFor!==game.level){app.classList.add("ui-blocked");upgradeShownFor=game.level;choices.innerHTML="";game.pending.forEach((u,i)=>{const b=document.createElement("button");b.className="upgrade";b.innerHTML=`<kbd>${i+1}</kbd><span><strong>${u.name}</strong><small>${u.desc}</small></span><span>選択</span>`;b.addEventListener("click",()=>game.chooseUpgrade(u.id));choices.append(b)});upgradePanel.classList.remove("hidden")}
  if(game.status!=="upgrade"){upgradePanel.classList.add("hidden");if(started&&game.status==="playing")app.classList.remove("ui-blocked")}
- if((game.status==="won"||game.status==="lost")&&resultPanel.classList.contains("hidden")){app.classList.add("ui-blocked");const m=game.metrics();document.querySelector("#resultLabel").textContent=game.status==="won"?"RIFT STABILIZED":"SIGNAL LOST";document.querySelector("#resultTitle").textContent=game.status==="won"?"8分間、未来を撃ち抜いた。":"残響はここで途切れた。";document.querySelector("#resultStats").innerHTML=`<div class="resultStat"><b>${m.score.toLocaleString()}</b><span>SCORE</span></div><div class="resultStat"><b>${m.kills}</b><span>KILLS</span></div><div class="resultStat"><b>${m.maxCombo}</b><span>MAX CHAIN</span></div>`;resultPanel.classList.remove("hidden")}
+ if((game.status==="won"||game.status==="lost")&&resultPanel.classList.contains("hidden")){app.classList.add("ui-blocked");const m=game.metrics();document.querySelector("#resultLabel").textContent=game.status==="won"?"クリア":"ゲームオーバー";document.querySelector("#resultTitle").textContent=game.status==="won"?"8分生き残りました":`生存時間 ${Math.floor(m.survival/60)}:${String(Math.floor(m.survival%60)).padStart(2,"0")}`;document.querySelector("#resultStats").innerHTML=`<div class="resultStat"><b>${m.score.toLocaleString()}</b><span>SCORE</span></div><div class="resultStat"><b>${m.kills}</b><span>KILLS</span></div><div class="resultStat"><b>${m.maxCombo}</b><span>MAX CHAIN</span></div>`;resultPanel.classList.remove("hidden")}
 }
 
 function frame(now){
