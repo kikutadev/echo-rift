@@ -5,8 +5,8 @@ const startPanel=document.querySelector("#start"),upgradePanel=document.querySel
 const startBtn=document.querySelector("#startBtn"),retryBtn=document.querySelector("#retryBtn"),choices=document.querySelector("#upgradeChoices");
 const hpbar=document.querySelector("#hpbar"),xpbar=document.querySelector("#xpbar"),timeEl=document.querySelector("#time"),levelEl=document.querySelector("#level"),scoreEl=document.querySelector("#score");
 const toast=document.querySelector("#toast"),tutorial=document.querySelector("#tutorial"),joystick=document.querySelector("#joystick"),stick=document.querySelector("#joystick i"),dashButton=document.querySelector("#dashButton");
-let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,toastTimer=0,tutorialTimer=0,echoNotice=false,screenShake=0;
-let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[],shockwaves=[],damageNumbers=[],muzzleFlashes=[];
+let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,toastTimer=0,tutorialTimer=0,echoNotice=false,screenShake=0,hitPause=0;
+let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[],shockwaves=[],damageNumbers=[],muzzleFlashes=[],dashSlashes=[];
 
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
@@ -113,6 +113,21 @@ function playTone(freq=220,duration=.04,gain=.02){
 let audio=null,lastImpactSound=0;
 
 // 撃破連打時は音を間引き、音割れと耳障りな連続音を防ぐ。
+// スタートと衝突は別の音色にして、操作と命中を耳でも区別できるようにする。
+function playDashSound(impact=false){
+ if(!started||!audio)return;
+ try{
+  const now=audio.currentTime;
+  const oscillator=audio.createOscillator(),gain=audio.createGain();
+  oscillator.type=impact?"square":"sawtooth";
+  oscillator.frequency.setValueAtTime(impact?160:760,now);
+  oscillator.frequency.exponentialRampToValueAtTime(impact?62:110,now+(impact?.075:.15));
+  gain.gain.setValueAtTime(impact?.032:.021,now);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+(impact?.09:.17));
+  oscillator.connect(gain).connect(audio.destination);
+  oscillator.start(now);oscillator.stop(now+(impact?.10:.18));
+ }catch{}
+}
 function playImpactSound(fromEcho=false){
  if(!started||!audio||performance.now()-lastImpactSound<105)return;
  lastImpactSound=performance.now();
@@ -151,12 +166,26 @@ function consumeEvents(){
    burst(game.player.x,game.player.y,"#ff637f",24,1.3);
    if(started)playTone(100,.11,.025);
   }else if(e.type==="dash"){
-   burst(game.player.x,game.player.y,"#7ef5ff",20,1.4);
-   shockwave(game.player.x,game.player.y,"#61e9ff",54,.25);
-   if(started)playTone(300,.06,.022);
+   dashButton.classList.remove("impact");
+   void dashButton.offsetWidth;
+   dashButton.classList.add("impact");
+   burst(e.x,e.y,"#7ef5ff",28,1.75);
+   shockwave(e.x,e.y,"#61e9ff",62,.2);
+   screenShake=Math.max(screenShake,2.6);
+   playDashSound();
   }else if(e.type==="dashHit"){
-   burst(e.x,e.y,"#df96ff",16,1.2);
-   shockwave(e.x,e.y,"#ca83ff",43,.22);
+   burst(e.x,e.y,e.killed?"#fff4cc":"#efb1ff",e.killed?25:17,1.7);
+   shockwave(e.x,e.y,"#e8a1ff",e.killed?62:42,.2);
+   dashSlashes.push({x:e.x,y:e.y,dx:e.dx,dy:e.dy,age:0,life:.20});
+   if(dashSlashes.length>35)dashSlashes.shift();
+   screenShake=Math.max(screenShake,e.killed?6.5:4.5);
+   if(e.first){
+    hitPause=Math.max(hitPause,.032);
+    playDashSound(true);
+   }
+  }else if(e.type==="dashEnd"){
+   shockwave(e.x,e.y,e.kills>=3?"#fff9c3":"#d3ffff",e.kills>=3?108:e.hits?75:48,.25);
+   burst(e.x,e.y,e.kills>=3?"#fff9c3":"#8df1ff",e.kills>=3?31:e.hits?20:10,1.1);
   }else if(e.type==="rift"){
    burst(e.x,e.y,"#c989ff",30,1.6);
    shockwave(e.x,e.y,"#c989ff",110,.42);
@@ -203,7 +232,7 @@ function reset(){
    const enemy=game.enemies[game.enemies.length-1];
    enemy.x=x;enemy.y=y;
  }
- started=true;last=performance.now();echoNotice=false;particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[];tutorialTimer=3.6;
+ started=true;last=performance.now();echoNotice=false;particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[];dashSlashes=[];hitPause=0;tutorialTimer=3.6;
  startPanel.classList.add("hidden");upgradePanel.classList.add("hidden");resultPanel.classList.add("hidden");tutorial.classList.remove("hidden");app.classList.remove("ui-blocked","intro");
 }
 startPanel.addEventListener("click",reset);retryBtn.addEventListener("click",reset);
@@ -338,6 +367,49 @@ function drawEnemy(e,t){
  ctx.restore();
 }
 
+// 高速移動の軌跡を二重の光の帯と残像で描き、進行方向の強さを見せる。
+function drawDashTrail(player){
+ const trail=player.dashTrail;
+ if(trail.length<2)return;
+ ctx.save();ctx.globalCompositeOperation="lighter";ctx.lineCap="round";
+ for(let i=1;i<trail.length;i++){
+  const a=trail[i-1],b=trail[i];
+  const strength=Math.max(0,1-b.age/.25)*Math.min(1,i/4+.2);
+  if(strength<=0)continue;
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+  ctx.lineWidth=39;ctx.strokeStyle="#345aff";ctx.globalAlpha=strength*.15;ctx.stroke();
+  ctx.lineWidth=24;ctx.strokeStyle="#5ce2ff";ctx.globalAlpha=strength*.35;ctx.stroke();
+  ctx.lineWidth=9;ctx.strokeStyle="#c2fbff";ctx.globalAlpha=strength*.82;ctx.stroke();
+ }
+ for(let i=0;i<trail.length-1;i+=3){
+  const mark=trail[i],alpha=Math.max(0,1-mark.age/.25)*.22;
+  ctx.globalAlpha=alpha;ctx.fillStyle="#b9fbff";
+  ctx.beginPath();ctx.arc(mark.x,mark.y,player.r+4,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+}
+
+// ダッシュが敵に当たった場所だけ、移動軸を横切る斬撃線を短時間表示する。
+function drawDashSlashes(){
+ ctx.save();ctx.globalCompositeOperation="lighter";
+ for(const slash of dashSlashes){
+  const remain=Math.max(0,1-slash.age/slash.life);
+  const sideX=-slash.dy,sideY=slash.dx,radius=34+26*(1-remain);
+  ctx.globalAlpha=remain*.82;
+  ctx.strokeStyle="#e0ffff";ctx.lineWidth=3.8*remain+.6;ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo(slash.x-sideX*radius-slash.dx*12,slash.y-sideY*radius-slash.dy*12);
+  ctx.lineTo(slash.x+sideX*radius+slash.dx*12,slash.y+sideY*radius+slash.dy*12);
+  ctx.stroke();
+  ctx.strokeStyle="#bc83ff";ctx.lineWidth=7*remain;
+  ctx.beginPath();
+  ctx.moveTo(slash.x-sideX*radius,slash.y-sideY*radius);
+  ctx.lineTo(slash.x+sideX*radius,slash.y+sideY*radius);
+  ctx.stroke();
+ }
+ ctx.restore();
+}
+
 function renderWorld(){
  const p=game.player,t=game.time;
  for(const r of game.rifts){
@@ -400,7 +472,9 @@ function renderWorld(){
  }
  ctx.restore();
 
+ drawDashTrail(p);
  for(const e of game.enemies)drawEnemy(e,t);
+ drawDashSlashes();
 
  ctx.save();ctx.globalCompositeOperation="lighter";
  for(const q of particles){
@@ -417,8 +491,13 @@ function renderWorld(){
  // 残像の発生直後やダッシュ中は移動の軌跡を見せる。カメラ倍率は固定。
  ctx.save();ctx.translate(p.x,p.y);
  if(p.dashActive>0){
-  ctx.globalAlpha=.3;ctx.fillStyle="#6bedff";
-  ctx.beginPath();ctx.ellipse(-p.dx*36,-p.dy*36,48,13,Math.atan2(p.dy,p.dx),0,Math.PI*2);ctx.fill();
+  const angle=Math.atan2(p.dy,p.dx);
+  ctx.rotate(angle);
+  ctx.globalAlpha=.54;ctx.fillStyle="#6bedff";
+  ctx.beginPath();ctx.ellipse(-33,0,57,13,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=.8;ctx.strokeStyle="#e9ffff";ctx.lineWidth=3.5;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(44,0);ctx.lineTo(-12,-19);ctx.moveTo(44,0);ctx.lineTo(-12,19);ctx.stroke();
+  ctx.rotate(-angle);
  }
  ctx.globalAlpha=p.inv>0?.75+Math.sin(t*22)*.15:1;
  ctx.fillStyle="#eaffff";ctx.shadowColor="#4beaff";ctx.shadowBlur=23;
@@ -434,7 +513,7 @@ function renderWorld(){
 
 // 一定時間で確実に消す。長時間プレイで演出がメモリへ蓄積しないようにする。
 function updateParticles(dt){
- for(const array of [particles,shockwaves,damageNumbers,muzzleFlashes]){
+ for(const array of [particles,shockwaves,damageNumbers,muzzleFlashes,dashSlashes]){
   for(let i=array.length-1;i>=0;i--){
    const fx=array[i];fx.age+=dt;
    if(array===particles){
@@ -451,6 +530,9 @@ function updateUi(){
  const s=game.snapshot(),remain=Math.max(0,WORLD.runSeconds-s.time),m=Math.floor(remain/60),sec=Math.floor(remain%60);
  timeEl.textContent=`${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;levelEl.textContent=`LV ${s.level}`;scoreEl.textContent=s.score.toLocaleString();
  hpbar.style.transform=`scaleX(${Math.max(0,s.hp/s.maxHp)})`;xpbar.style.transform=`scaleX(${Math.min(1,s.xp/s.xpNeed)})`;
+ const remaining=game.player.dashT,maximum=game.player.dashCd;
+ dashButton.style.setProperty("--dash-charge",`${(1-Math.min(1,remaining/maximum))*360}deg`);
+ dashButton.classList.toggle("ready",remaining<=0&&game.status==="playing");
  if(game.status==="upgrade"&&upgradeShownFor!==game.level){app.classList.add("ui-blocked");upgradeShownFor=game.level;choices.innerHTML="";game.pending.forEach((u,i)=>{const b=document.createElement("button");b.className="upgrade";b.innerHTML=`<kbd>${i+1}</kbd><span><strong>${u.name}</strong><small>${u.desc}</small></span><span>選択</span>`;b.addEventListener("click",()=>game.chooseUpgrade(u.id));choices.append(b)});upgradePanel.classList.remove("hidden")}
  if(game.status!=="upgrade"){upgradePanel.classList.add("hidden");if(started&&game.status==="playing")app.classList.remove("ui-blocked")}
  if((game.status==="won"||game.status==="lost")&&resultPanel.classList.contains("hidden")){app.classList.add("ui-blocked");const m=game.metrics();document.querySelector("#resultLabel").textContent=game.status==="won"?"クリア":"ゲームオーバー";document.querySelector("#resultTitle").textContent=game.status==="won"?"8分生き残りました":`生存時間 ${Math.floor(m.survival/60)}:${String(Math.floor(m.survival%60)).padStart(2,"0")}`;document.querySelector("#resultStats").innerHTML=`<div class="resultStat"><b>${m.score.toLocaleString()}</b><span>SCORE</span></div><div class="resultStat"><b>${m.kills}</b><span>KILLS</span></div><div class="resultStat"><b>${m.maxCombo}</b><span>MAX CHAIN</span></div>`;resultPanel.classList.remove("hidden")}
@@ -460,10 +542,12 @@ function frame(now){
  sampleZoomProbe();
  const dt=Math.min(.033,(now-last)/1000);last=now;
  if(!started){
-   if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[]}
+   if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[];dashSlashes=[];hitPause=0}
    game.step(dt,demoInput(game));
  }else if(game.status!=="upgrade"&&game.status!=="won"&&game.status!=="lost"){
-   game.step(dt,input());
+   // 衝突時のみ約32ms停止させ、その直後の高速移動を際立たせる。入力は保持する。
+   if(hitPause>0)hitPause=Math.max(0,hitPause-dt);
+   else game.step(dt,input());
  }
  updateParticles(dt);consumeEvents();
  if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)toast.classList.remove("show")}

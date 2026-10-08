@@ -40,7 +40,8 @@ function makeBot(kind,seed,build="balanced"){
    if(pickup&&pickup.d<(kind==="skilled"?180:115)&&th.magnitude<.5){const vx=pickup.g.x-p.x,vy=pickup.g.y-p.y,d=Math.hypot(vx,vy)||1;dx+=vx/d*.75;dy+=vy/d*.75}
    if(kind==="skilled"){
      const cx=480-p.x,cy=300-p.y,cd0=Math.hypot(cx,cy)||1;
-     dx+=cx/cd0*.30;dy+=cy/cd0*.30;
+     dx+=cx/cd0*.30+cy/cd0*.52;
+     dy+=cy/cd0*.30-cx/cd0*.52;
      for(const b of game.enemyBullets){
        const vv=b.vx*b.vx+b.vy*b.vy;if(!vv)continue;
        const px=p.x-b.x,py=p.y-b.y,eta=Math.max(0,Math.min(.65,(px*b.vx+py*b.vy)/vv));

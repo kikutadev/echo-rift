@@ -210,3 +210,20 @@ html,body{
   -webkit-user-select:none;
   user-select:none;
 }
+
+/* ダッシュのクールダウンは文字を増やさず外周リングで伝える。 */
+#dashButton{--dash-charge:360deg;isolation:isolate}
+#dashButton::before{
+  content:"";position:absolute;inset:-6px;border-radius:50%;
+  background:conic-gradient(#82f5ff var(--dash-charge),rgba(100,210,240,.15) 0deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));
+  pointer-events:none;
+}
+#dashButton.ready{box-shadow:inset 0 0 27px rgba(86,230,255,.19),0 0 24px rgba(70,226,255,.10)}
+#dashButton.impact{animation:dash-impact .20s ease-out}
+@keyframes dash-impact{
+  0%{transform:scale(.88);filter:brightness(1.6)}
+  48%{transform:scale(1.08);filter:brightness(1.25)}
+  100%{transform:scale(1);filter:brightness(1)}
+}

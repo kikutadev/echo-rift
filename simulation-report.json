@@ -11,176 +11,154 @@
     },
     "random": {
       "wins": "0/8",
-      "medianSurvival": 150.1,
-      "meanScore": 47821,
-      "meanKills": 2236.5,
+      "medianSurvival": 134.6,
+      "meanScore": 45231,
+      "meanKills": 2088.5,
       "meanLevel": 16.1,
-      "echoShare": 0.26,
-      "meanNearMiss": 84.6
+      "echoShare": 0.27,
+      "meanNearMiss": 81.8
     },
     "basic": {
-      "wins": "0/8",
-      "medianSurvival": 235.3,
-      "meanScore": 82661,
-      "meanKills": 3188.4,
-      "meanLevel": 21.5,
-      "echoShare": 0.37,
-      "meanNearMiss": 139.6
+      "wins": "2/8",
+      "medianSurvival": 426.8,
+      "meanScore": 264747,
+      "meanKills": 8418.3,
+      "meanLevel": 34.5,
+      "echoShare": 0.48,
+      "meanNearMiss": 236.5
     },
     "skilled": {
       "wins": "5/8",
       "medianSurvival": 480,
-      "meanScore": 394060,
-      "meanKills": 12041.1,
-      "meanLevel": 36.5,
-      "echoShare": 0.47,
-      "meanNearMiss": 300.9
+      "meanScore": 314687,
+      "meanKills": 9575.8,
+      "meanLevel": 33,
+      "echoShare": 0.45,
+      "meanNearMiss": 205.9
     }
   },
   "buildResults": {
     "echo": {
-      "wins": "8/8",
-      "medianSurvival": 480,
-      "meanScore": 896409,
-      "meanKills": 26184.3,
-      "meanLevel": 50,
-      "echoShare": 0.68,
-      "meanNearMiss": 353
-    },
-    "weapon": {
       "wins": "7/8",
       "medianSurvival": 480,
-      "meanScore": 542887,
-      "meanKills": 16743,
-      "meanLevel": 43.9,
-      "echoShare": 0.44,
-      "meanNearMiss": 386.9
+      "meanScore": 684995,
+      "meanKills": 19944.4,
+      "meanLevel": 44.1,
+      "echoShare": 0.65,
+      "meanNearMiss": 234
+    },
+    "weapon": {
+      "wins": "8/8",
+      "medianSurvival": 480,
+      "meanScore": 475079,
+      "meanKills": 14516.1,
+      "meanLevel": 42.1,
+      "echoShare": 0.43,
+      "meanNearMiss": 281.6
     },
     "dash": {
       "wins": "0/8",
-      "medianSurvival": 184.9,
-      "meanScore": 42098,
-      "meanKills": 1807.5,
-      "meanLevel": 16.8,
+      "medianSurvival": 314.6,
+      "meanScore": 50657,
+      "meanKills": 2034.3,
+      "meanLevel": 17.5,
       "echoShare": 0.14,
-      "meanNearMiss": 101.3
+      "meanNearMiss": 106.1
     },
     "balanced": {
       "wins": "5/8",
       "medianSurvival": 480,
-      "meanScore": 394060,
-      "meanKills": 12041.1,
-      "meanLevel": 36.5,
-      "echoShare": 0.47,
-      "meanNearMiss": 300.9
+      "meanScore": 314687,
+      "meanKills": 9575.8,
+      "meanLevel": 33,
+      "echoShare": 0.45,
+      "meanNearMiss": 205.9
     }
   },
   "acceptance": {
     "skillGradient": true,
     "viableBuilds": 3,
-    "representativeLevel": 44,
-    "representativeStatus": "won",
+    "representativeLevel": 22,
+    "representativeStatus": "lost",
     "pacing": [
       {
         "phase": 0,
-        "killsPerMinute": 720.5,
-        "damage": 114
+        "killsPerMinute": 489.5,
+        "damage": 127
       },
       {
         "phase": 1,
-        "killsPerMinute": 2064.7,
-        "damage": 487
+        "killsPerMinute": 476.7,
+        "damage": 289
       },
       {
         "phase": 2,
-        "killsPerMinute": 3021.7,
-        "damage": 381
+        "killsPerMinute": 215,
+        "damage": 79
       }
     ]
   },
   "representative": {
     "seed": 404,
-    "status": "won",
-    "survival": 480,
-    "score": 567838,
-    "kills": 16700,
-    "level": 44,
-    "hp": 160,
+    "status": "lost",
+    "survival": 407.4,
+    "score": 83213,
+    "kills": 3054,
+    "level": 22,
+    "hp": 0,
     "maxHp": 230,
     "maxCombo": 20,
-    "hits": 156,
-    "damageTaken": 982,
-    "damageDealt": 3503924,
-    "echoShare": 0.577,
-    "nearMisses": 384,
-    "maxEnemiesSeen": 63,
-    "dashKills": 559,
+    "hits": 78,
+    "damageTaken": 495,
+    "damageDealt": 348909,
+    "echoShare": 0.386,
+    "nearMisses": 121,
+    "maxEnemiesSeen": 113,
+    "dashKills": 182,
     "upgrades": [
-      "rate",
-      "dashCd",
       "echoDamage",
-      "dashCd",
+      "echoDamage",
       "hp",
-      "echoCopy",
-      "rate",
-      "echoDamage",
-      "echoDamage",
-      "rate",
-      "damage",
-      "damage",
-      "damage",
-      "echoDamage",
-      "echoDamage",
-      "dashCd",
-      "pierce",
       "hp",
-      "pierce",
+      "hp",
+      "damage",
       "speed",
-      "hp",
-      "hp",
       "damage",
-      "pierce",
-      "hp",
-      "damage",
-      "hp",
-      "dashCd",
+      "echoDamage",
+      "rate",
       "hp",
       "rate",
+      "hp",
+      "echoDamage",
       "damage",
       "dashCd",
-      "damage",
-      "echoCopy",
-      "pierce",
-      "speed",
-      "dashDamage",
-      "speed",
-      "speed",
-      "speed",
-      "speed",
-      "dashDamage",
-      "dashDamage"
+      "echoDamage",
+      "rate",
+      "hp",
+      "dashCd",
+      "hp"
     ],
     "pacing": [
       {
         "from": 0,
         "to": 120,
-        "kills": 1441,
-        "damage": 114,
-        "xp": 10170
+        "kills": 979,
+        "damage": 127,
+        "xp": 6813
       },
       {
         "from": 120,
         "to": 300,
-        "kills": 6194,
-        "damage": 487,
-        "xp": 56577
+        "kills": 1430,
+        "damage": 289,
+        "xp": 12627
       },
       {
         "from": 300,
         "to": 480,
-        "kills": 9065,
-        "damage": 381,
-        "xp": 92248
+        "kills": 645,
+        "damage": 79,
+        "xp": 6328
       }
     ]
   }

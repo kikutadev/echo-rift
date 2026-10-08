@@ -56,7 +56,7 @@ this.time=0;this.status="playing";this.level=1;this.xp=0;this.xpNeed=480;this.ne
 this.enemies=[];this.bullets=[];this.enemyBullets=[];this.pickups=[];this.echoes=[];this.rifts=[];this.history=[];this.shots=[];this.events=[];
 this.spawnBudget=0;this.refillBudget=0;this.waveTimer=4.5;this.maxLivingEnemies=110;this.echoTimer=2.6;this.pending=[];this.upgradeHistory=[];this.nextId=1;this.bossMarks=new Set();this.hitEvents=0;this.maxEnemiesSeen=0;this.damageTaken=0;this.damageDealt=0;this.echoDamage=0;this.nearMisses=0;this.dashKills=0;this.lastThreat=999;
 this.pacing=[{from:0,to:120,kills:0,damage:0,xp:0},{from:120,to:300,kills:0,damage:0,xp:0},{from:300,to:480,kills:0,damage:0,xp:0}];
-this.player={x:480,y:300,r:13,hp:110,maxHp:110,speed:230,fire:.27,fireT:.1,damage:21,bulletSpeed:580,pierce:0,dashCd:3,dashT:0,dashActive:0,dashHit:new Set(),dx:1,dy:0,dashSpeed:650,inv:0,magnet:132,echoMult:.72,echoCopies:1,echoCycle:4.8,echoDuration:3,dashDamage:48,riftRadius:84};
+this.player={x:480,y:300,r:13,hp:110,maxHp:110,speed:230,fire:.27,fireT:.1,damage:21,bulletSpeed:580,pierce:0,dashCd:2.5,dashT:0,dashActive:0,dashDuration:.21,dashKillsThisDash:0,dashHit:new Set(),dashTrail:[],dx:1,dy:0,dashSpeed:990,inv:0,magnet:132,echoMult:.72,echoCopies:1,echoCycle:4.8,echoDuration:3,dashDamage:48,riftRadius:84};
 }
 bucket(){return this.pacing.find(x=>this.time>=x.from&&this.time<x.to)||this.pacing[2]}
 emit(type,data={}){this.events.push({type,...data});if(this.events.length>80)this.events.shift()}
@@ -222,17 +222,85 @@ updateSpawns(dt){
  this.maxEnemiesSeen=Math.max(this.maxEnemiesSeen,this.enemies.length);
 }
 
+// 入力した瞬間に加速させ、移動軌跡全体に貫通攻撃判定を付ける。
 updatePlayer(dt,input){
-const p=this.player;p.fireT-=dt;p.dashT=Math.max(0,p.dashT-dt);p.inv=Math.max(0,p.inv-dt);let m=norm(input.dx||0,input.dy||0);if(!(input.dx||input.dy))m={x:0,y:0};
-if((m.x||m.y)&&p.dashActive<=0){p.dx=m.x;p.dy=m.y}
-if(input.dash&&p.dashT<=0&&p.dashActive<=0){const d=(m.x||m.y)?m:{x:p.dx,y:p.dy};p.dashActive=.18;p.dashT=p.dashCd;p.inv=Math.max(p.inv,.42);p.dashHit=new Set();p.dx=d.x;p.dy=d.y;this.rifts.push({x:p.x,y:p.y,age:0,damage:p.dashDamage,radius:p.riftRadius,boom:false});this.emit("dash")}
-let speed=p.speed;if(p.dashActive>0){p.dashActive-=dt;m={x:p.dx,y:p.dy};speed=p.dashSpeed;if(p.dashActive<=0)this.rifts.push({x:p.x,y:p.y,age:0,damage:p.dashDamage,radius:p.riftRadius,boom:false})}
-p.x=clamp(p.x+m.x*speed*dt,18,942);p.y=clamp(p.y+m.y*speed*dt,18,582);
-if(p.dashActive>0){for(const e of this.enemies){if(e.hp<=0||p.dashHit.has(e.id))continue;const rr=p.r+e.r+10;if((e.x-p.x)**2+(e.y-p.y)**2<=rr*rr){p.dashHit.add(e.id);this.damageEnemy(e,p.dashDamage*.72,"rift");this.emit("dashHit",{x:e.x,y:e.y})}}}
-if(p.fireT<=0&&this.enemies.length){this.fire(p.x,p.y,p.damage,p.pierce);p.fireT+=p.fire}
-this.history.push({t:this.time,x:p.x,y:p.y});const floor=this.time-5;while(this.history.length&&this.history[0].t<floor)this.history.shift();while(this.shots.length&&this.shots[0].t<floor)this.shots.shift();
-this.echoTimer-=dt;if(this.echoTimer<=0&&this.time>3.2){this.echoTimer+=p.echoCycle;this.spawnEcho()}
+ const p=this.player;
+ p.fireT-=dt;p.dashT=Math.max(0,p.dashT-dt);p.inv=Math.max(0,p.inv-dt);
+ // ダッシュの残像は移動完了後も短く残す。
+ for(const mark of p.dashTrail)mark.age+=dt;
+ p.dashTrail=p.dashTrail.filter(mark=>mark.age<.25);
+ const desired=norm(input.dx||0,input.dy||0);
+ let movement=(input.dx||input.dy)?desired:{x:0,y:0};
+ if((movement.x||movement.y)&&p.dashActive<=0){p.dx=movement.x;p.dy=movement.y}
+
+ if(input.dash&&p.dashT<=0&&p.dashActive<=0){
+  const direction=(movement.x||movement.y)?movement:{x:p.dx,y:p.dy};
+  p.dx=direction.x;p.dy=direction.y;
+  p.dashActive=p.dashDuration;p.dashT=p.dashCd;
+  p.inv=Math.max(p.inv,.45);p.dashHit=new Set();p.dashKillsThisDash=0;
+  p.dashTrail=[{x:p.x,y:p.y,age:0}];
+  // 始点の衝撃波は即座に発動し、周囲の包囲を押し返す。
+  this.rifts.push({x:p.x,y:p.y,age:0,delay:.055,damage:p.dashDamage*.7,
+   radius:p.riftRadius*.72,boom:false});
+  this.emit("dash",{x:p.x,y:p.y,dx:p.dx,dy:p.dy});
+ }
+
+ const fromX=p.x,fromY=p.y;
+ const dashing=p.dashActive>0;
+ if(dashing){
+  const remaining=p.dashActive/p.dashDuration;
+  const activeSeconds=Math.min(dt,p.dashActive);
+  // 発動直後が最速。終端まで高速を保ち、次フレームの入力が遅延しない。
+  const speed=p.dashSpeed*(.92+.27*remaining);
+  p.x=clamp(p.x+p.dx*speed*activeSeconds,18,942);
+  p.y=clamp(p.y+p.dy*speed*activeSeconds,18,582);
+  p.dashActive=Math.max(0,p.dashActive-activeSeconds);
+  p.dashTrail.push({x:p.x,y:p.y,age:0});
+  if(p.dashTrail.length>20)p.dashTrail.shift();
+
+  let hits=0;
+  const segmentX=p.x-fromX,segmentY=p.y-fromY;
+  const segmentLen2=segmentX*segmentX+segmentY*segmentY;
+  for(const e of this.enemies){
+   if(e.hp<=0||p.dashHit.has(e.id))continue;
+   // 点の当たり判定だと高速移動時に敵をすり抜ける。線分との最短距離を使う。
+   const progress=segmentLen2>0?clamp(((e.x-fromX)*segmentX+(e.y-fromY)*segmentY)/segmentLen2,0,1):0;
+   const closestX=fromX+segmentX*progress,closestY=fromY+segmentY*progress;
+   const distance=Math.hypot(e.x-closestX,e.y-closestY);
+   if(distance>p.r+e.r+13)continue;
+   p.dashHit.add(e.id);hits++;
+   this.damageEnemy(e,p.dashDamage*1.15,"rift");
+   if(e.hp<=0)p.dashKillsThisDash++;
+   if(e.hp>0){
+    // 敵は後方へ飛ばす。複数体が固まった時ほど明瞭に前進を感じられる。
+    e.x=clamp(e.x+p.dx*33,0,WORLD.width);
+    e.y=clamp(e.y+p.dy*33,0,WORLD.height);
+   }
+   this.emit("dashHit",{x:closestX,y:closestY,dx:p.dx,dy:p.dy,
+    killed:e.hp<=0,first:p.dashHit.size===1});
+  }
+  if(p.dashActive<=0){
+   this.rifts.push({x:p.x,y:p.y,age:0,delay:.11,damage:p.dashDamage,
+    radius:p.riftRadius,boom:false});
+   // 撃破が連なるほど次のダッシュが早く使える。攻める意味のある報酬にする。
+   if(p.dashKillsThisDash>=2)p.dashT=Math.max(.8,p.dashT-Math.min(.65,p.dashKillsThisDash*.13));
+   this.emit("dashEnd",{x:p.x,y:p.y,dx:p.dx,dy:p.dy,hits:p.dashHit.size,kills:p.dashKillsThisDash});
+  }
+ }else{
+  p.x=clamp(p.x+movement.x*p.speed*dt,18,942);
+  p.y=clamp(p.y+movement.y*p.speed*dt,18,582);
+ }
+ if(p.fireT<=0&&this.enemies.length){
+  this.fire(p.x,p.y,p.damage,p.pierce);p.fireT+=p.fire;
+ }
+ this.history.push({t:this.time,x:p.x,y:p.y});
+ const floor=this.time-5;
+ while(this.history.length&&this.history[0].t<floor)this.history.shift();
+ while(this.shots.length&&this.shots[0].t<floor)this.shots.shift();
+ this.echoTimer-=dt;
+ if(this.echoTimer<=0&&this.time>3.2){this.echoTimer+=p.echoCycle;this.spawnEcho()}
 }
+
 updateEchoes(dt){
 const p=this.player;for(let i=this.echoes.length-1;i>=0;i--){const e=this.echoes[i];e.age+=dt;if(e.age<0)continue;if(e.age>e.duration){this.echoes.splice(i,1);continue}
 let s=e.samples[e.samples.length-1];for(const q of e.samples){if(q.rel>=e.age){s=q;break}}
@@ -279,7 +347,7 @@ updatePickups(dt){
 const p=this.player;for(let i=this.pickups.length-1;i>=0;i--){const g=this.pickups[i];g.vx*=Math.pow(.03,dt);g.vy*=Math.pow(.03,dt);g.x+=g.vx*dt;g.y+=g.vy*dt;const dx=p.x-g.x,dy=p.y-g.y,d=Math.max(1,Math.hypot(dx,dy));if(d<p.magnet){const pull=clamp((p.magnet-d)/p.magnet,.3,1)*700;g.x+=dx/d*pull*dt;g.y+=dy/d*pull*dt}if(d<p.r+8){this.gainXp(g.value);this.pickups.splice(i,1)}}
 }
 updateRifts(dt){
-for(let i=this.rifts.length-1;i>=0;i--){const r=this.rifts[i];r.age+=dt;if(!r.boom&&r.age>=.42){
+for(let i=this.rifts.length-1;i>=0;i--){const r=this.rifts[i];r.age+=dt;if(!r.boom&&r.age>=(r.delay??.42)){
  r.boom=true;let kills=0;
  for(const e of this.enemies){
   if(e.hp<=0)continue;
@@ -308,6 +376,18 @@ dt=clamp(dt,0,.05);this.time+=dt;this.comboTimer-=dt;if(this.comboTimer<=0)this.
 const minimum=25+Math.min(27,Math.floor(this.time*.23));
 // 秒間スポーン量とは別に、描画直前の敵密度を保証する。
 while(this.enemies.length<minimum&&this.enemies.length<this.maxLivingEnemies)this.spawn();
+// 総数が十分でも、カメラの外に敵が偏るとスマホでは空白になる。
+// 可視領域だけ別に数え、画面内の最低密度を保つ。
+const focus=portraitCameraFocus(this.player);
+const isVisible=e=>Math.abs(e.x-focus.x)<207&&Math.abs(e.y-focus.y)<420;
+let visibleCount=0;
+for(const enemy of this.enemies)if(enemy.hp>0&&isVisible(enemy))visibleCount++;
+const visibleMinimum=Math.min(21,15+Math.floor(this.time/45));
+let attempts=0;
+while(visibleCount<visibleMinimum&&this.enemies.length<this.maxLivingEnemies&&attempts++<24){
+ this.spawn(null,{distance:this.rng.range(135,184)});
+ if(isVisible(this.enemies[this.enemies.length-1]))visibleCount++;
+}
 this.maxEnemiesSeen=Math.max(this.maxEnemiesSeen,this.enemies.length);
 if(this.time>=480&&this.status!=="lost"){this.status="won";this.score+=2500;this.emit("won")}
 }
