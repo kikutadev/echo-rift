@@ -201,3 +201,12 @@ html,body{
   -webkit-user-select:none;user-select:none;
   -webkit-touch-callout:none;
 }
+
+
+/* iOS WebKitの1本指ダブルタップ/パン/テキスト選択もゲーム面で抑止する。 */
+#hud,#hud *,#game,#app,#app.intro,.tutorial,#toast{
+  touch-action:none;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}

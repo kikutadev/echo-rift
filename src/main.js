@@ -11,6 +11,30 @@ let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[],shockwav
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
 
+// QAクエリでのみ表示。実Safariでジェスチャー前後のページ倍率を数値検証する。
+const zoomProbe=(()=>{
+ if(!new URLSearchParams(location.search).has("zoomQa"))return null;
+ const element=document.createElement("div");
+ element.id="zoomQaProbe";
+ element.style.cssText="position:fixed;top:52px;left:10px;z-index:30;pointer-events:none;"+
+  "font:700 14px system-ui;color:white;background:#001a26;padding:6px;"+
+  "border:1px solid #5ef2ff;border-radius:4px";
+ element.setAttribute("role","status");
+ document.body.append(element);
+ return {element,maximum:1};
+})();
+function sampleZoomProbe(){
+ if(!zoomProbe)return;
+ const scale=window.visualViewport?.scale??1;
+ zoomProbe.maximum=Math.max(zoomProbe.maximum,scale);
+ zoomProbe.element.textContent="ZOOM "+scale.toFixed(2)+" MAX "+zoomProbe.maximum.toFixed(2);
+}
+if(zoomProbe){
+ sampleZoomProbe();
+ window.visualViewport?.addEventListener("resize",sampleZoomProbe);
+ window.visualViewport?.addEventListener("scroll",sampleZoomProbe);
+}
+
 // iOS Safari上ではゲーム領域のブラウザズーム・スクロールジェスチャーを使わせない。
 for(const type of ["gesturestart","gesturechange","gestureend"]){
  window.addEventListener(type,e=>e.preventDefault(),{passive:false});
@@ -18,6 +42,21 @@ for(const type of ["gesturestart","gesturechange","gestureend"]){
 document.addEventListener("touchmove",e=>{
  if(e.touches.length>1)e.preventDefault();
 },{passive:false});
+
+// SafariのSmart Zoomはgesturestartだけでは防げず、1本指の連続タップでも発生する。
+// キャンバスの操作はpointerdownで処理するため、プレイ中のtouchデフォルト動作を無効化する。
+// 強化選択などのDOMボタンは除外し、アクセシビリティ操作やタップ選択を壊さない。
+function suppressGameplayBrowserGesture(event){
+ if(!started || game.status!=="playing")return;
+ if(!app.contains(event.target))return;
+ if(event.cancelable)event.preventDefault();
+}
+for(const type of ["touchstart","touchmove","touchend","touchcancel"]){
+ app.addEventListener(type,suppressGameplayBrowserGesture,{capture:true,passive:false});
+}
+app.addEventListener("dblclick",event=>{
+ if(started&&game.status==="playing"&&event.cancelable)event.preventDefault();
+},{capture:true});
 function setWorldCamera(){
  const portrait=canvas.height>canvas.width*1.25;
  const scale=portrait?canvas.width/420:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
@@ -418,6 +457,7 @@ function updateUi(){
 }
 
 function frame(now){
+ sampleZoomProbe();
  const dt=Math.min(.033,(now-last)/1000);last=now;
  if(!started){
    if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[]}
