@@ -1,1 +1,12 @@
-{"name":"echo-rift-autonomous-benchmark","private":true,"type":"module","scripts":{"simulate":"node scripts/simulate.mjs","test":"node scripts/test.mjs"}}
+{
+  "name": "echo-rift-autonomous-benchmark",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "simulate": "node scripts/simulate.mjs",
+    "test": "node scripts/test.mjs",
+    "qa:browser": "node scripts/qa.mjs",
+    "qa:touch": "node scripts/qa-touch.mjs",
+    "qa:density": "node scripts/qa-density.mjs"
+  }
+}

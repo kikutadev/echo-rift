@@ -34,7 +34,7 @@ function makeBot(kind,seed,build="balanced"){
      if(t>=nextTurn){angle+=rng.range(-1.7,1.7);nextTurn=t+rng.range(.45,1.4)}
      return{dx:Math.cos(angle),dy:Math.sin(angle),dash:p.dashT<=0&&rng.next()<.002};
    }
-   const th=kind==="skilled"?threatVector(game,310):bodyThreatVector(game,250),edge=edgeVector(p);
+   const th=bodyThreatVector(game,kind==="skilled"?285:250),edge=edgeVector(p);
    let dx=th.x*(kind==="skilled"?1.75:1.25)+edge.x*1.6,dy=th.y*(kind==="skilled"?1.75:1.25)+edge.y*1.6;
    const pickup=nearestPickup(game);
    if(pickup&&pickup.d<(kind==="skilled"?180:115)&&th.magnitude<.5){const vx=pickup.g.x-p.x,vy=pickup.g.y-p.y,d=Math.hypot(vx,vy)||1;dx+=vx/d*.75;dy+=vy/d*.75}
@@ -45,10 +45,14 @@ function makeBot(kind,seed,build="balanced"){
        const vv=b.vx*b.vx+b.vy*b.vy;if(!vv)continue;
        const px=p.x-b.x,py=p.y-b.y,eta=Math.max(0,Math.min(.65,(px*b.vx+py*b.vy)/vv));
        const ix=b.x+b.vx*eta,iy=b.y+b.vy*eta,ax=p.x-ix,ay=p.y-iy,ad=Math.hypot(ax,ay);
-       if(ad<72){const q=(72-ad)/72;dx+=ax/(ad||1)*q*1.25;dy+=ay/(ad||1)*q*1.25}
+       if(ad<72){const q=(72-ad)/72;dx+=ax/(ad||1)*q*.65;dy+=ay/(ad||1)*q*.65}
      }
    }else{
-     const cx=480-p.x,cy=300-p.y,cd=Math.hypot(cx,cy)||1;dx+=cx/cd*.28;dy+=cy/cd*.28;
+     const cx=480-p.x,cy=300-p.y,cd=Math.hypot(cx,cy)||1;
+     dx+=cx/cd*.28;dy+=cy/cd*.28;
+     // 基本botは敵の塊から逃げるだけでなく、横へ回り込んで包囲を解く。
+     dx+=cy/cd*.58;dy+=-cx/cd*.58;
+     if(th.magnitude<.2){dx+=.26;dy+=.18}
    }
    const d=Math.hypot(dx,dy)||1;
    const dash=p.dashT<=0&&(th.magnitude>(kind==="skilled"?.64:.78)||game.enemyBullets.some(b=>(b.x-p.x)**2+(b.y-p.y)**2<62**2));

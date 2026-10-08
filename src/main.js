@@ -5,8 +5,8 @@ const startPanel=document.querySelector("#start"),upgradePanel=document.querySel
 const startBtn=document.querySelector("#startBtn"),retryBtn=document.querySelector("#retryBtn"),choices=document.querySelector("#upgradeChoices");
 const hpbar=document.querySelector("#hpbar"),xpbar=document.querySelector("#xpbar"),timeEl=document.querySelector("#time"),levelEl=document.querySelector("#level"),scoreEl=document.querySelector("#score");
 const toast=document.querySelector("#toast"),tutorial=document.querySelector("#tutorial"),joystick=document.querySelector("#joystick"),stick=document.querySelector("#joystick i"),dashButton=document.querySelector("#dashButton");
-let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,eventSeen=0,toastTimer=0,tutorialTimer=0,echoNotice=false;
-let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[];
+let game=makeAttractGame(),started=false,last=performance.now(),keys=new Set(),dashQueued=false,upgradeShownFor=0,toastTimer=0,tutorialTimer=0,echoNotice=false,screenShake=0;
+let touchVec={x:0,y:0},joyPointer=null,joyOrigin={x:0,y:0},particles=[],shockwaves=[],damageNumbers=[],muzzleFlashes=[];
 
 function resizeCanvas(){canvas.width=Math.max(1,Math.floor(innerWidth));canvas.height=Math.max(1,Math.floor(innerHeight))}
 resizeCanvas();window.addEventListener("resize",resizeCanvas);
@@ -22,8 +22,11 @@ function setWorldCamera(){
  const portrait=canvas.height>canvas.width*1.25;
  const scale=portrait?canvas.width/420:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
  const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player;
- const camX=portrait?p.x:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
- const camY=portrait?p.y:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
+ // ワールド端では戦場側を広く見せる。カメラ倍率は変えず位置のみ調整する。
+ const edgeX=portrait?Math.max(-1,Math.min(1,(p.x-WORLD.width/2)/400))*105:0;
+ const edgeY=portrait?Math.max(-1,Math.min(1,(p.y-WORLD.height/2)/260))*68:0;
+ const camX=portrait?p.x-edgeX:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
+ const camY=portrait?p.y-edgeY:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
  ctx.setTransform(scale,0,0,scale,canvas.width/2-camX*scale,canvas.height/2-camY*scale);
 }
 
@@ -44,44 +47,125 @@ function makeAttractGame(){
 }
 
 const rnd=(a,b)=>a+Math.random()*(b-a);
-function burst(x,y,color,count=8){
- for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=rnd(35,180);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(.18,.5),age:0,color})}
- if(particles.length>300)particles.splice(0,particles.length-300);
+
+// エフェクトを使い捨て配列に集約し、スマホでGPU負荷が増え続けないよう上限を持つ。
+function burst(x,y,color,count=8,power=1){
+ for(let i=0;i<count;i++){
+  const angle=rnd(0,Math.PI*2),speed=rnd(55,210)*power;
+  particles.push({
+   x,y,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,
+   life:rnd(.22,.58),age:0,color,size:rnd(1.8,4.6)*Math.min(1.4,power)
+  });
+ }
+ if(particles.length>520)particles.splice(0,particles.length-520);
 }
+function shockwave(x,y,color,radius=48,life=.32){
+ shockwaves.push({x,y,color,radius,life,age:0});
+ if(shockwaves.length>28)shockwaves.splice(0,shockwaves.length-28);
+}
+function floatDamage(x,y,amount,color){
+ damageNumbers.push({x:x+rnd(-10,10),y:y-18,amount:Math.round(amount),color,age:0,life:.62});
+ if(damageNumbers.length>32)damageNumbers.shift();
+}
+
 function showToast(text){toast.textContent=text;toast.classList.add("show");toastTimer=1.2}
 function playTone(freq=220,duration=.04,gain=.02){
  try{audio??=new AudioContext();const o=audio.createOscillator(),g=audio.createGain();o.type="sine";o.frequency.value=freq;g.gain.setValueAtTime(gain,audio.currentTime);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+duration);o.connect(g).connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}
 }
-let audio=null;
+let audio=null,lastImpactSound=0;
+
+// 撃破連打時は音を間引き、音割れと耳障りな連続音を防ぐ。
+function playImpactSound(fromEcho=false){
+ if(!started||!audio||performance.now()-lastImpactSound<105)return;
+ lastImpactSound=performance.now();
+ try{
+  const oscillator=audio.createOscillator(),gain=audio.createGain(),now=audio.currentTime;
+  oscillator.type="triangle";
+  oscillator.frequency.setValueAtTime(fromEcho?430:290,now);
+  oscillator.frequency.exponentialRampToValueAtTime(fromEcho?180:115,now+.065);
+  gain.gain.setValueAtTime(.018,now);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+.075);
+  oscillator.connect(gain).connect(audio.destination);oscillator.start(now);oscillator.stop(now+.08);
+ }catch{}
+}
+// キューは毎フレーム排出する。従来の配列index方式では80件で演出が停止していた。
 function consumeEvents(){
- const events=game.events;
- if(eventSeen>events.length)eventSeen=0;
- for(let i=eventSeen;i<events.length;i++){
-   const e=events[i];
-   if(e.type==="kill"){burst(e.x,e.y,e.type==="boss"?"#ffffff":e.source==="echo"?"#5bf4ff":"#ff6ba7",e.type==="boss"?36:7);if(e.type==="boss"){showToast("ボス撃破");playTone(90,.35,.04)}}
-   if(e.type==="hurt"){playTone(95,.12,.03)}
-   if(e.type==="dash"){playTone(330,.05,.018)}
-   if(e.type==="level"){playTone(660,.12,.025)}
-   if(e.type==="boss"){showToast("ボス出現");playTone(74,.3,.035)}
-   if(e.type==="rift"){burst(e.x,e.y,"#ca72ff",18)}
-   if(e.type==="dashHit"){burst(e.x,e.y,"#e28cff",10);playTone(250,.045,.018)}
-   if(e.type==="echo"){playTone(480,.06,.012);if(!echoNotice){echoNotice=true;showToast("残像が攻撃開始")}}
+ const events=game.events.splice(0);
+ for(const e of events){
+  if(e.type==="fire"){
+   if(e.echo||Math.random()<.75){
+    muzzleFlashes.push({x:e.x,y:e.y,angle:e.angle,echo:e.echo,age:0});
+    if(muzzleFlashes.length>24)muzzleFlashes.shift();
+   }
+  }else if(e.type==="hit"){
+   if(Math.random()<.55)burst(e.x,e.y,e.source==="echo"?"#73f2ff":"#ffcedd",2,.55);
+   if(e.damage>19&&Math.random()<.24)floatDamage(e.x,e.y,e.damage,e.source==="echo"?"#8af2ff":"#ffe2ac");
+  }else if(e.type==="kill"){
+   const boss=e.type==="boss";
+   const color=boss?"#fff5bc":e.source==="echo"?"#6af2ff":e.source==="rift"?"#be7cff":"#ff628d";
+   burst(e.x,e.y,color,boss?56:12,boss?1.9:1.1);
+   shockwave(e.x,e.y,color,boss?150:37,boss?.8:.27);
+   playImpactSound(e.source==="echo");
+   screenShake=Math.max(screenShake,boss?9:1.5);
+   if(boss&&started){showToast("ボス撃破");playTone(105,.25,.035)}
+  }else if(e.type==="hurt"){
+   screenShake=Math.max(screenShake,5.2);
+   burst(game.player.x,game.player.y,"#ff637f",24,1.3);
+   if(started)playTone(100,.11,.025);
+  }else if(e.type==="dash"){
+   burst(game.player.x,game.player.y,"#7ef5ff",20,1.4);
+   shockwave(game.player.x,game.player.y,"#61e9ff",54,.25);
+   if(started)playTone(300,.06,.022);
+  }else if(e.type==="dashHit"){
+   burst(e.x,e.y,"#df96ff",16,1.2);
+   shockwave(e.x,e.y,"#ca83ff",43,.22);
+  }else if(e.type==="rift"){
+   burst(e.x,e.y,"#c989ff",30,1.6);
+   shockwave(e.x,e.y,"#c989ff",110,.42);
+   screenShake=Math.max(screenShake,3.6);
+  }else if(e.type==="dashCombo"){
+   burst(e.x,e.y,"#fff8c4",24,1.4);
+   shockwave(e.x,e.y,"#f5c7ff",130,.35);
+   screenShake=Math.max(screenShake,4.4);
+   if(started)playTone(540,.08,.022);
+  }else if(e.type==="chainBurst"){
+   burst(e.x,e.y,"#fff4b3",34,1.55);
+   shockwave(e.x,e.y,"#ffe08b",125,.5);
+   screenShake=Math.max(screenShake,3.2);
+   if(started)playTone(620,.10,.018);
+  }else if(e.type==="echo"){
+   const p=game.player;
+   shockwave(p.x,p.y,"#67e9ff",84,.7);
+   if(started&&!echoNotice){echoNotice=true;showToast("残像が攻撃開始")}
+  }else if(e.type==="boss"){
+   screenShake=Math.max(screenShake,5);
+   if(started){showToast("ボス出現");playTone(74,.3,.03)}
+  }else if(e.type==="level"&&started){
+   playTone(660,.10,.024);
+  }
  }
- eventSeen=events.length;
 }
 
 function reset(){
+ // iOS Safariはユーザー操作の直後でないと音声再生を許可しない。
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(AC){audio??=new AC();audio.resume?.().catch(()=>{});}
+ }catch{}
  game=new EchoRiftGame({seed:(Date.now()^Math.floor(Math.random()*1e9))>>>0});
- const starters=[
-   ["chaser",315,300],["chaser",645,300],["chaser",480,145],
-   ["scout",480,455],["chaser",350,185]
- ];
+ const starters=Array.from({length:16},(_,index)=>{
+   const a=index/16*Math.PI*2;
+   const radius=135+(index%3)*27;
+   return [index%5===0?"scout":"chaser",
+     Math.max(28,Math.min(WORLD.width-28,480+Math.cos(a)*radius)),
+     Math.max(28,Math.min(WORLD.height-28,300+Math.sin(a)*radius))];
+ });
  for(const [type,x,y] of starters){
    game.spawn(type);
    const enemy=game.enemies[game.enemies.length-1];
    enemy.x=x;enemy.y=y;
  }
- started=true;last=performance.now();eventSeen=0;echoNotice=false;particles=[];tutorialTimer=3.6;
+ started=true;last=performance.now();echoNotice=false;particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[];tutorialTimer=3.6;
  startPanel.classList.add("hidden");upgradePanel.classList.add("hidden");resultPanel.classList.add("hidden");tutorial.classList.remove("hidden");app.classList.remove("ui-blocked","intro");
 }
 startPanel.addEventListener("click",reset);retryBtn.addEventListener("click",reset);
@@ -134,38 +218,196 @@ function roundRect(x,y,w,h,r){
 function glow(color,blur){ctx.shadowColor=color;ctx.shadowBlur=blur}
 function noGlow(){ctx.shadowBlur=0}
 
+// グリッドはカメラ外まで連続させ、敵や爆発が増えても背景の描画負荷を一定にする。
 function renderBackground(t){
- ctx.fillStyle="#050811";ctx.fillRect(-1000,-1000,2960,2600);
- const grd=ctx.createRadialGradient(480,300,30,480,300,520);grd.addColorStop(0,"#111f36");grd.addColorStop(.45,"#07101f");grd.addColorStop(1,"#020307");ctx.fillStyle=grd;ctx.fillRect(0,0,960,600);
- ctx.save();ctx.globalAlpha=.22;ctx.strokeStyle="#1c4660";ctx.lineWidth=1;const drift=(t*8)%48;
- for(let x=-960+drift;x<1960;x+=48){ctx.beginPath();ctx.moveTo(x,-900);ctx.lineTo(x-520,1500);ctx.stroke()}
- for(let y=-900;y<1500;y+=50){ctx.beginPath();ctx.moveTo(-1000,y);ctx.lineTo(1960,y);ctx.stroke()}
+ ctx.fillStyle="#050b17";
+ ctx.fillRect(-1000,-1000,2960,2600);
+ const gradient=ctx.createRadialGradient(game.player.x,game.player.y,15,game.player.x,game.player.y,550);
+ gradient.addColorStop(0,"#101d35");gradient.addColorStop(.55,"#081426");
+ gradient.addColorStop(1,"#040711");
+ ctx.fillStyle=gradient;ctx.fillRect(-1000,-1000,2960,2600);
+
+ ctx.save();ctx.strokeStyle="rgba(36,102,137,.24)";ctx.lineWidth=1;
+ const offset=(t*4)%52;ctx.beginPath();
+ for(let x=-1150+offset;x<2100;x+=52){ctx.moveTo(x,-1000);ctx.lineTo(x-360,1600)}
+ for(let y=-1000;y<1700;y+=52){ctx.moveTo(-1200,y);ctx.lineTo(2000,y)}
+ ctx.stroke();ctx.restore();
+
+ // 速度差のある微光を置き、単色の真っ暗な背景になるのを防ぐ。
+ ctx.save();
+ for(let i=0;i<65;i++){
+  const x=((i*187+53)%1800)-400;
+  const y=((i*293+23)%1300)-350;
+  const alpha=.12+.15*(1+Math.sin(t*(.6+i%5*.2)+i))*.5;
+  ctx.fillStyle="rgba(98,213,247,"+alpha+")";
+  ctx.fillRect(x,y,i%7===0?2.4:1.4,i%7===0?2.4:1.4);
+ }
  ctx.restore();
- ctx.save();ctx.translate(480,300);ctx.rotate(t*.025);ctx.strokeStyle="rgba(74,221,255,.1)";ctx.lineWidth=1;
- for(const r of [105,190,285]){ctx.setLineDash([2,12]);ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.stroke()}ctx.restore();
+}
+
+// エフェクトの年齢からリング半径を決める。ズームせず画面内だけを強調する。
+function drawShockwaves(){
+ for(const w of shockwaves){
+  const progress=w.age/w.life;
+  ctx.save();
+  ctx.globalAlpha=(1-progress)*.8;
+  ctx.strokeStyle=w.color;
+  ctx.lineWidth=3.2*(1-progress)+.8;
+  ctx.beginPath();ctx.arc(w.x,w.y,w.radius*(.15+.85*progress),0,Math.PI*2);ctx.stroke();
+  ctx.globalAlpha=(1-progress)*.08;
+  ctx.fillStyle=w.color;
+  ctx.beginPath();ctx.arc(w.x,w.y,w.radius*(.15+.85*progress),0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ }
+}
+
+// 雑魚は大量に描くため、Canvasの重いshadowBlurはボス以外に使わない。
+function drawEnemy(e,t){
+ const boss=e.type==="boss",brute=e.type==="brute",scout=e.type==="scout",shooter=e.type==="shooter";
+ const color=boss?"#ff5075":brute?"#b981ff":shooter?"#ffb75d":scout?"#f5dc65":"#ff618d";
+ const sides=boss?9:brute?6:shooter?4:scout?3:5;
+ ctx.save();ctx.translate(e.x,e.y);
+ const spin=(scout?1.45:.45)*t+e.phase;
+ const pulse=1+Math.sin(t*5+e.id)*.05;
+ ctx.rotate(spin);ctx.scale(pulse,pulse);
+ if(boss){ctx.shadowBlur=21;ctx.shadowColor="#ff3559"}
+ ctx.fillStyle=e.flash>0?"#ffffff":color;
+ ctx.strokeStyle=boss?"#ffe6f2":"rgba(255,255,255,.55)";ctx.lineWidth=boss?3:1.6;
+ ctx.beginPath();
+ for(let i=0;i<sides;i++){
+  const a=i/sides*Math.PI*2-Math.PI/2;
+  const r=e.r*(i%2===0?1:.87);
+  i===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+ }
+ ctx.closePath();ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+ // 暗いコアと白い2つの目で小さな雑魚にも顔と動く方向を与える。
+ ctx.rotate(-spin);
+ ctx.fillStyle=boss?"#591228":"#152238";
+ ctx.beginPath();ctx.arc(0,0,e.r*.52,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#fff7ef";
+ const eye=e.r*.17;
+ ctx.beginPath();ctx.arc(-eye,-e.r*.12,Math.max(1.6,e.r*.105),0,Math.PI*2);
+ ctx.arc(eye,-e.r*.12,Math.max(1.6,e.r*.105),0,Math.PI*2);ctx.fill();
+ if(t-e.born<.42){
+  ctx.strokeStyle=color;ctx.globalAlpha=(1-(t-e.born)/.42)*.42;ctx.lineWidth=1.6;
+  ctx.beginPath();ctx.arc(0,0,e.r+10*(1-(t-e.born)/.42),0,Math.PI*2);ctx.stroke();
+ }
+ if(boss||brute){
+  const ratio=Math.max(0,e.hp/e.maxHp);
+  ctx.fillStyle="#080d1a";ctx.fillRect(-e.r,-e.r-12,e.r*2,4);
+  ctx.fillStyle=color;ctx.fillRect(-e.r,-e.r-12,e.r*2*ratio,4);
+ }
+ ctx.restore();
 }
 
 function renderWorld(){
- const p=game.player;
- for(const r of game.rifts){ctx.save();const k=Math.min(1,r.age/.42);ctx.globalAlpha=r.boom?Math.max(0,1-(r.age-.42)/.4):.45;ctx.strokeStyle=r.boom?"#df8cff":"#744cff";ctx.lineWidth=r.boom?4:2;glow("#b65cff",24);ctx.beginPath();ctx.arc(r.x,r.y,r.boom?r.radius:16+(r.radius-16)*.68*k,0,Math.PI*2);ctx.stroke();ctx.restore()}
- for(const g of game.pickups){ctx.save();ctx.translate(g.x,g.y);ctx.rotate(game.time*2+g.x);ctx.fillStyle="#90f7ff";glow("#39eaff",12);ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(5,0);ctx.lineTo(0,6);ctx.lineTo(-5,0);ctx.closePath();ctx.fill();ctx.restore()}
- for(const e of game.echoes){if(e.age<0)continue;ctx.save();ctx.globalAlpha=.24+Math.sin(e.age*12)*.05;ctx.fillStyle="#5ceaff";glow("#5ceaff",22);ctx.beginPath();ctx.arc(e.x,e.y,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#c4fbff";ctx.lineWidth=1;ctx.beginPath();ctx.arc(e.x,e.y,18+Math.sin(e.age*8)*3,0,Math.PI*2);ctx.stroke();ctx.restore()}
- for(const b of game.bullets){ctx.save();ctx.strokeStyle=b.echo?"#65edff":"#ff72b6";ctx.lineWidth=b.echo?3:2;glow(ctx.strokeStyle,10);ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-b.vx*.018,b.y-b.vy*.018);ctx.stroke();ctx.restore()}
- for(const b of game.enemyBullets){ctx.save();ctx.fillStyle="#ffb14d";glow("#ff642e",14);ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.restore()}
- for(const e of game.enemies){
-   ctx.save();ctx.translate(e.x,e.y);const boss=e.type==="boss",brute=e.type==="brute",shooter=e.type==="shooter",scout=e.type==="scout";
-   ctx.rotate(game.time*(scout?2.3:.35)+e.id);ctx.fillStyle=e.flash>0?"#fff":boss?"#ff466f":brute?"#d267ff":shooter?"#ff9a48":scout?"#ffc859":"#fa5f8f";glow(ctx.fillStyle,boss?28:12);
-   ctx.beginPath();const sides=boss?8:brute?6:shooter?4:scout?3:5;for(let i=0;i<sides;i++){const a=i/sides*Math.PI*2-Math.PI/2,rr=e.r*(i%2? .82:1);const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.fill();
-   if(boss||brute){ctx.rotate(-game.time*(scout?2.3:.35)-e.id);ctx.fillStyle="rgba(0,0,0,.45)";ctx.fillRect(-e.r,-e.r-10,e.r*2,3);ctx.fillStyle=boss?"#ff416b":"#cb6eff";ctx.fillRect(-e.r,-e.r-10,e.r*2*Math.max(0,e.hp/e.maxHp),3)}
-   ctx.restore();
+ const p=game.player,t=game.time;
+ for(const r of game.rifts){
+  const progress=Math.min(1,r.age/.42);
+  ctx.save();
+  ctx.globalAlpha=r.boom?Math.max(0,1-(r.age-.42)/.4):.38;
+  ctx.strokeStyle=r.boom?"#f5a4ff":"#a47cff";
+  ctx.lineWidth=r.boom?5:2.5;
+  ctx.beginPath();ctx.arc(r.x,r.y,r.boom?r.radius:14+(r.radius-14)*progress,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
  }
- for(const q of particles){ctx.save();ctx.globalAlpha=Math.max(0,1-q.age/q.life);ctx.fillStyle=q.color;ctx.fillRect(q.x-2,q.y-2,4,4);ctx.restore()}
- ctx.save();const pulse=1+Math.sin(game.time*7)*.08;ctx.translate(p.x,p.y);if(p.dashActive>0){ctx.globalAlpha=.28;ctx.fillStyle="#77eeff";ctx.beginPath();ctx.ellipse(-p.dx*32,-p.dy*32,38,12,Math.atan2(p.dy,p.dx),0,Math.PI*2);ctx.fill()}
- ctx.scale(pulse,pulse);ctx.fillStyle=p.inv>0&&Math.floor(game.time*30)%2?"#fff":"#dffcff";glow("#55e8ff",26);ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#58e7ff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,p.r+7,game.time*2,game.time*2+Math.PI*1.4);ctx.stroke();ctx.restore();
- if(game.combo>=4){ctx.save();ctx.font="900 18px system-ui";ctx.fillStyle="#85f4ff";ctx.textAlign="center";ctx.fillText(`x${game.combo} CHAIN`,p.x,p.y-32);ctx.restore()}
+ drawShockwaves();
+ // 経験値アイテムはまとめて1回のfillにして、数が増えても描画を安定させる。
+ ctx.fillStyle="#80eeff";ctx.beginPath();
+ for(const g of game.pickups){
+  ctx.moveTo(g.x,g.y-5.5);ctx.lineTo(g.x+4.6,g.y);
+  ctx.lineTo(g.x,g.y+5.5);ctx.lineTo(g.x-4.6,g.y);ctx.closePath();
+ }
+ ctx.fill();
+
+ // 3秒前の軌道を可視化し、ECHOがなぜその位置にいるか理解できるようにする。
+ for(const e of game.echoes){
+  if(e.age<0)continue;
+  ctx.save();
+  ctx.globalAlpha=.26;ctx.strokeStyle="#61e7ff";ctx.lineWidth=2;
+  ctx.beginPath();let count=0;
+  for(const sample of e.samples){
+   if(sample.rel>e.age)break;
+   if(count%3===0){count===0?ctx.moveTo(sample.x,sample.y):ctx.lineTo(sample.x,sample.y)}
+   count++;
+  }
+  ctx.stroke();
+  ctx.globalAlpha=.7;ctx.fillStyle="#6af2ff";ctx.shadowColor="#53eaff";ctx.shadowBlur=18;
+  ctx.beginPath();ctx.arc(e.x,e.y,12,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;ctx.strokeStyle="#c9faff";ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(e.x,e.y,19+Math.sin(t*9)*2,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+ }
+
+ // 加算合成は弾と火花に限定する（敵を光らせすぎると形が読めない）。
+ ctx.save();ctx.globalCompositeOperation="lighter";
+ for(const b of game.bullets){
+  const color=b.echo?"#77efff":"#ff8ab9";
+  ctx.strokeStyle=color;ctx.lineWidth=b.echo?3.3:3.8;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-b.vx*.032,b.y-b.vy*.032);ctx.stroke();
+  ctx.fillStyle="#fff";
+  ctx.beginPath();ctx.arc(b.x,b.y,1.7,0,Math.PI*2);ctx.fill();
+ }
+ for(const flash of muzzleFlashes){
+  const fade=1-flash.age/.13;
+  ctx.globalAlpha=Math.max(0,fade);
+  ctx.strokeStyle=flash.echo?"#8af8ff":"#ffd5ed";ctx.lineWidth=4*fade;
+  ctx.beginPath();ctx.arc(flash.x,flash.y,7+14*(1-fade),flash.angle-.7,flash.angle+.7);ctx.stroke();
+ }
+ ctx.globalAlpha=1;
+ for(const b of game.enemyBullets){
+  ctx.strokeStyle="#ffb64b";ctx.lineWidth=3.5;ctx.beginPath();
+  ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-b.vx*.025,b.y-b.vy*.025);ctx.stroke();
+  ctx.fillStyle="#fff1aa";ctx.beginPath();ctx.arc(b.x,b.y,2.6,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+
+ for(const e of game.enemies)drawEnemy(e,t);
+
+ ctx.save();ctx.globalCompositeOperation="lighter";
+ for(const q of particles){
+  const alpha=Math.max(0,1-q.age/q.life);
+  ctx.globalAlpha=alpha;ctx.strokeStyle=q.color;ctx.lineWidth=q.size;ctx.lineCap="round";
+  ctx.beginPath();ctx.moveTo(q.x,q.y);ctx.lineTo(q.x-q.vx*.027,q.y-q.vy*.027);ctx.stroke();
+ }
+ ctx.restore();
+ for(const n of damageNumbers){
+  ctx.save();ctx.globalAlpha=Math.max(0,1-n.age/n.life);
+  ctx.font="900 12px system-ui";ctx.fillStyle=n.color;ctx.textAlign="center";
+  ctx.fillText(String(n.amount),n.x,n.y-n.age*24);ctx.restore();
+ }
+ // 残像の発生直後やダッシュ中は移動の軌跡を見せる。カメラ倍率は固定。
+ ctx.save();ctx.translate(p.x,p.y);
+ if(p.dashActive>0){
+  ctx.globalAlpha=.3;ctx.fillStyle="#6bedff";
+  ctx.beginPath();ctx.ellipse(-p.dx*36,-p.dy*36,48,13,Math.atan2(p.dy,p.dx),0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=p.inv>0?.75+Math.sin(t*22)*.15:1;
+ ctx.fillStyle="#eaffff";ctx.shadowColor="#4beaff";ctx.shadowBlur=23;
+ ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;ctx.strokeStyle="#5ef2ff";ctx.lineWidth=3;
+ ctx.beginPath();ctx.arc(0,0,p.r+8,t*2.5,t*2.5+Math.PI*1.55);ctx.stroke();
+ ctx.restore();
+ if(game.combo>=5){
+  ctx.save();ctx.font="900 17px system-ui";ctx.fillStyle="#a3f7ff";ctx.textAlign="center";
+  ctx.fillText("×"+game.combo,p.x,p.y-35);ctx.restore();
+ }
 }
 
-function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.age+=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);if(p.age>=p.life)particles.splice(i,1)}}
+// 一定時間で確実に消す。長時間プレイで演出がメモリへ蓄積しないようにする。
+function updateParticles(dt){
+ for(const array of [particles,shockwaves,damageNumbers,muzzleFlashes]){
+  for(let i=array.length-1;i>=0;i--){
+   const fx=array[i];fx.age+=dt;
+   if(array===particles){
+    fx.x+=fx.vx*dt;fx.y+=fx.vy*dt;
+    const drag=Math.pow(.05,dt);fx.vx*=drag;fx.vy*=drag;
+   }
+   if(fx.age>=(fx.life??.13))array.splice(i,1);
+  }
+ }
+ screenShake=Math.max(0,screenShake-dt*21);
+}
 
 function updateUi(){
  const s=game.snapshot(),remain=Math.max(0,WORLD.runSeconds-s.time),m=Math.floor(remain/60),sec=Math.floor(remain%60);
@@ -179,7 +421,7 @@ function updateUi(){
 function frame(now){
  const dt=Math.min(.033,(now-last)/1000);last=now;
  if(!started){
-   if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();eventSeen=0;particles=[]}
+   if(game.status==="lost"||game.status==="won"||game.time>150){game=makeAttractGame();particles=[];shockwaves=[];damageNumbers=[];muzzleFlashes=[]}
    game.step(dt,demoInput(game));
  }else if(game.status!=="upgrade"&&game.status!=="won"&&game.status!=="lost"){
    game.step(dt,input());
@@ -190,7 +432,9 @@ function frame(now){
    tutorialTimer-=dt;
    if(game.status==="upgrade"||tutorialTimer<=0)tutorial.classList.add("hidden");
  }
- ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#020307";ctx.fillRect(0,0,canvas.width,canvas.height);setWorldCamera();renderBackground(game.time);renderWorld();ctx.setTransform(1,0,0,1,0,0);updateUi();requestAnimationFrame(frame);
+ ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#020307";ctx.fillRect(0,0,canvas.width,canvas.height);setWorldCamera();
+ if(screenShake>.2)ctx.translate((Math.random()-.5)*screenShake,(Math.random()-.5)*screenShake);
+ renderBackground(game.time);renderWorld();ctx.setTransform(1,0,0,1,0,0);updateUi();requestAnimationFrame(frame);
 }
 window.__echoRift={get game(){return game},start:reset,metrics:()=>game.metrics()};
 requestAnimationFrame(frame);
