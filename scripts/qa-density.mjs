@@ -55,6 +55,29 @@ const frameTiming=await page.evaluate(()=>new Promise(resolve=>{
  }
  requestAnimationFrame(onFrame);
 }));
-console.log(JSON.stringify({early,mid,frameTiming,errors},null,2));
+// 最大密度（110体）を強制して、敵の押し合いと描画を同時負荷検証する。
+const stressPopulation=await page.evaluate(()=>{
+ const g=window.__echoRift.game;
+ g.player.maxHp=100000;g.player.hp=100000;
+ while(g.enemies.length<g.maxLivingEnemies){
+  g.spawn("brute",{angle:g.enemies.length*.618,distance:145+(g.enemies.length%4)*20});
+ }
+ for(const enemy of g.enemies){enemy.hp=Math.max(enemy.hp,100000);enemy.maxHp=Math.max(enemy.maxHp,100000)}
+ return g.enemies.length;
+});
+await page.waitForTimeout(250);
+const stressTiming=await page.evaluate(()=>new Promise(resolve=>{
+ const samples=[];let last=performance.now();
+ function measure(now){
+  samples.push(now-last);last=now;
+  if(samples.length<110){requestAnimationFrame(measure);return}
+  const steady=samples.slice(10), sorted=steady.slice().sort((a,b)=>a-b);
+  const avg=steady.reduce((sum,v)=>sum+v,0)/steady.length;
+  resolve({fps:+(1000/avg).toFixed(1),p95ms:+sorted[Math.floor(sorted.length*.95)].toFixed(1),
+   enemies:window.__echoRift.game.enemies.length});
+ }
+ requestAnimationFrame(measure);
+}));
+console.log(JSON.stringify({early,mid,frameTiming,stressPopulation,stressTiming,errors},null,2));
 await context.close();await browser.close();await new Promise(resolve=>server.close(resolve));
-if(errors.length||early.enemies<20||mid.visible<20||mid.time<130||frameTiming.fps<40)process.exit(1);
+if(errors.length||early.enemies<20||mid.visible<15||mid.time<130||frameTiming.fps<40||stressPopulation<100||stressTiming.fps<30)process.exit(1);

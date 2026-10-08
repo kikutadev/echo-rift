@@ -24,6 +24,14 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const norm=(x,y)=>{const d=Math.hypot(x,y)||1;return{x:x/d,y:y/d}};
 const hit=(a,b)=>{const r=a.r+b.r;return(a.x-b.x)**2+(a.y-b.y)**2<=r*r};
 
+// 縦画面で表示する戦場の中心を統一。スポーンと描画カメラがずれないようにする。
+export function portraitCameraFocus(player){
+ const edgeX=clamp((player.x-WORLD.width/2)/400,-1,1)*105;
+ const edgeY=clamp((player.y-WORLD.height/2)/260,-1,1)*68;
+ return {x:player.x-edgeX,y:player.y-edgeY};
+}
+
+
 export class RNG{
 constructor(seed=1){this.s=(seed>>>0)||1}
 next(){let x=this.s;x^=x<<13;x^=x>>>17;x^=x<<5;this.s=x>>>0;return this.s/4294967296}
@@ -44,7 +52,7 @@ return out;
 export class EchoRiftGame{
 constructor({seed=1,autoUpgradePolicy=null}={}){this.seed=seed;this.rng=new RNG(seed);this.autoUpgradePolicy=autoUpgradePolicy;this.reset()}
 reset(){
-this.time=0;this.status="playing";this.level=1;this.xp=0;this.xpNeed=230;this.score=0;this.kills=0;this.combo=0;this.comboTimer=0;this.maxCombo=0;
+this.time=0;this.status="playing";this.level=1;this.xp=0;this.xpNeed=480;this.nextLevelTime=6;this.score=0;this.kills=0;this.combo=0;this.comboTimer=0;this.maxCombo=0;
 this.enemies=[];this.bullets=[];this.enemyBullets=[];this.pickups=[];this.echoes=[];this.rifts=[];this.history=[];this.shots=[];this.events=[];
 this.spawnBudget=0;this.refillBudget=0;this.waveTimer=4.5;this.maxLivingEnemies=110;this.echoTimer=2.6;this.pending=[];this.upgradeHistory=[];this.nextId=1;this.bossMarks=new Set();this.hitEvents=0;this.maxEnemiesSeen=0;this.damageTaken=0;this.damageDealt=0;this.echoDamage=0;this.nearMisses=0;this.dashKills=0;this.lastThreat=999;
 this.pacing=[{from:0,to:120,kills:0,damage:0,xp:0},{from:120,to:300,kills:0,damage:0,xp:0},{from:300,to:480,kills:0,damage:0,xp:0}];
@@ -69,8 +77,9 @@ spawn(type=null, options={}){
  const angle=options.angle??this.rng.range(0,TAU);
  const radius=options.distance??this.rng.range(145,195);
  // 縦長画面の可視範囲に合わせた楕円形スポーン。左右の画面外待機を解消する。
- let x=clamp(this.player.x+Math.cos(angle)*radius*.86,24,WORLD.width-24);
- let y=clamp(this.player.y+Math.sin(angle)*radius*1.48,24,WORLD.height-24);
+ const focus=portraitCameraFocus(this.player);
+ let x=clamp(focus.x+Math.cos(angle)*radius*.86,24,WORLD.width-24);
+ let y=clamp(focus.y+Math.sin(angle)*radius*1.48,24,WORLD.height-24);
  if(Math.hypot(x-this.player.x,y-this.player.y)<105){
   const inward=Math.atan2(WORLD.height/2-this.player.y,WORLD.width/2-this.player.x)+this.rng.range(-.48,.48);
   x=clamp(this.player.x+Math.cos(inward)*180,24,WORLD.width-24);
@@ -159,10 +168,13 @@ damageEnemy(e,amount,source){
 }
 
 gainXp(v){
-this.xp+=v;if(this.xp>=this.xpNeed&&this.status==="playing"){
+this.xp+=v;if(this.xp>=this.xpNeed&&this.status==="playing"&&this.time>=this.nextLevelTime){
  this.xp-=this.xpNeed;this.level++;
+ this.nextLevelTime=this.time+8;
  this.player.hp=Math.min(this.player.maxHp,this.player.hp+7);
- this.xpNeed=Math.round(70+this.level*23+Math.pow(this.level,1.4)*7+Math.max(0,this.level-15)**2*12);
+ // 経験値必要量は単調増加。数秒おきの選択画面連発を防ぐ。
+ this.xpNeed=Math.max(this.xpNeed+25,
+  Math.round(70+this.level*23+Math.pow(this.level,1.4)*7+Math.max(0,this.level-15)**2*12));
  const p=this.player;
  const available=UPGRADES.filter(u=>{
   if(u.id==="damage")return p.damage<90;

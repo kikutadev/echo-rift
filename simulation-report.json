@@ -2,99 +2,99 @@
   "botResults": {
     "idle": {
       "wins": "0/8",
-      "medianSurvival": 86.4,
-      "meanScore": 34464,
-      "meanKills": 1754.3,
-      "meanLevel": 18.3,
-      "echoShare": 0.36,
-      "meanNearMiss": 79.1
+      "medianSurvival": 30.9,
+      "meanScore": 5872,
+      "meanKills": 404.5,
+      "meanLevel": 4.5,
+      "echoShare": 0.16,
+      "meanNearMiss": 0
     },
     "random": {
       "wins": "0/8",
-      "medianSurvival": 276.7,
-      "meanScore": 294347,
-      "meanKills": 10530.4,
-      "meanLevel": 34.6,
-      "echoShare": 0.41,
-      "meanNearMiss": 189.4
+      "medianSurvival": 150.1,
+      "meanScore": 47821,
+      "meanKills": 2236.5,
+      "meanLevel": 16.1,
+      "echoShare": 0.26,
+      "meanNearMiss": 84.6
     },
     "basic": {
       "wins": "0/8",
-      "medianSurvival": 443.6,
-      "meanScore": 303111,
-      "meanKills": 9710,
-      "meanLevel": 37.4,
-      "echoShare": 0.49,
-      "meanNearMiss": 184.6
+      "medianSurvival": 235.3,
+      "meanScore": 82661,
+      "meanKills": 3188.4,
+      "meanLevel": 21.5,
+      "echoShare": 0.37,
+      "meanNearMiss": 139.6
     },
     "skilled": {
-      "wins": "6/8",
+      "wins": "5/8",
       "medianSurvival": 480,
-      "meanScore": 480526,
-      "meanKills": 14782.8,
-      "meanLevel": 40.6,
+      "meanScore": 394060,
+      "meanKills": 12041.1,
+      "meanLevel": 36.5,
       "echoShare": 0.47,
-      "meanNearMiss": 286.6
+      "meanNearMiss": 300.9
     }
   },
   "buildResults": {
     "echo": {
       "wins": "8/8",
       "medianSurvival": 480,
-      "meanScore": 1125158,
-      "meanKills": 34157,
-      "meanLevel": 53.4,
-      "echoShare": 0.61,
-      "meanNearMiss": 253.5
+      "meanScore": 896409,
+      "meanKills": 26184.3,
+      "meanLevel": 50,
+      "echoShare": 0.68,
+      "meanNearMiss": 353
     },
     "weapon": {
-      "wins": "1/8",
-      "medianSurvival": 452.7,
-      "meanScore": 572127,
-      "meanKills": 18483.4,
-      "meanLevel": 45,
-      "echoShare": 0.4,
-      "meanNearMiss": 262.5
+      "wins": "7/8",
+      "medianSurvival": 480,
+      "meanScore": 542887,
+      "meanKills": 16743,
+      "meanLevel": 43.9,
+      "echoShare": 0.44,
+      "meanNearMiss": 386.9
     },
     "dash": {
       "wins": "0/8",
-      "medianSurvival": 247.5,
-      "meanScore": 83693,
-      "meanKills": 3324.3,
-      "meanLevel": 26,
-      "echoShare": 0.08,
-      "meanNearMiss": 160.9
+      "medianSurvival": 184.9,
+      "meanScore": 42098,
+      "meanKills": 1807.5,
+      "meanLevel": 16.8,
+      "echoShare": 0.14,
+      "meanNearMiss": 101.3
     },
     "balanced": {
-      "wins": "6/8",
+      "wins": "5/8",
       "medianSurvival": 480,
-      "meanScore": 480526,
-      "meanKills": 14782.8,
-      "meanLevel": 40.6,
+      "meanScore": 394060,
+      "meanKills": 12041.1,
+      "meanLevel": 36.5,
       "echoShare": 0.47,
-      "meanNearMiss": 286.6
+      "meanNearMiss": 300.9
     }
   },
   "acceptance": {
     "skillGradient": true,
     "viableBuilds": 3,
-    "representativeLevel": 45,
+    "representativeLevel": 44,
     "representativeStatus": "won",
     "pacing": [
       {
         "phase": 0,
-        "killsPerMinute": 1448,
-        "damage": 91
+        "killsPerMinute": 720.5,
+        "damage": 114
       },
       {
         "phase": 1,
-        "killsPerMinute": 2456.7,
-        "damage": 317
+        "killsPerMinute": 2064.7,
+        "damage": 487
       },
       {
         "phase": 2,
-        "killsPerMinute": 2484.3,
-        "damage": 501
+        "killsPerMinute": 3021.7,
+        "damage": 381
       }
     ]
   },
@@ -102,86 +102,85 @@
     "seed": 404,
     "status": "won",
     "survival": 480,
-    "score": 573646,
-    "kills": 17719,
-    "level": 45,
-    "hp": 16,
+    "score": 567838,
+    "kills": 16700,
+    "level": 44,
+    "hp": 160,
     "maxHp": 230,
     "maxCombo": 20,
-    "hits": 138,
-    "damageTaken": 909,
-    "damageDealt": 3375262,
-    "echoShare": 0.444,
-    "nearMisses": 359,
-    "maxEnemiesSeen": 64,
-    "dashKills": 1874,
+    "hits": 156,
+    "damageTaken": 982,
+    "damageDealt": 3503924,
+    "echoShare": 0.577,
+    "nearMisses": 384,
+    "maxEnemiesSeen": 63,
+    "dashKills": 559,
     "upgrades": [
-      "hp",
-      "damage",
-      "damage",
       "rate",
-      "echoDamage",
-      "rate",
-      "hp",
-      "rate",
-      "echoDamage",
-      "rate",
-      "hp",
       "dashCd",
-      "damage",
-      "dashCd",
-      "damage",
-      "hp",
       "echoDamage",
-      "damage",
-      "pierce",
-      "echoDamage",
-      "hp",
       "dashCd",
       "hp",
-      "pierce",
-      "damage",
-      "echoDamage",
-      "hp",
-      "dashCd",
-      "damage",
-      "dashCd",
-      "speed",
-      "dashDamage",
-      "speed",
-      "speed",
-      "dashDamage",
-      "speed",
-      "speed",
-      "pierce",
       "echoCopy",
-      "echoCopy",
-      "dashDamage",
+      "rate",
+      "echoDamage",
+      "echoDamage",
+      "rate",
+      "damage",
+      "damage",
+      "damage",
+      "echoDamage",
+      "echoDamage",
+      "dashCd",
+      "pierce",
+      "hp",
       "pierce",
       "speed",
+      "hp",
+      "hp",
+      "damage",
+      "pierce",
+      "hp",
+      "damage",
+      "hp",
+      "dashCd",
+      "hp",
+      "rate",
+      "damage",
+      "dashCd",
+      "damage",
+      "echoCopy",
+      "pierce",
+      "speed",
+      "dashDamage",
+      "speed",
+      "speed",
+      "speed",
+      "speed",
+      "dashDamage",
       "dashDamage"
     ],
     "pacing": [
       {
         "from": 0,
         "to": 120,
-        "kills": 2896,
-        "damage": 91,
-        "xp": 20671
+        "kills": 1441,
+        "damage": 114,
+        "xp": 10170
       },
       {
         "from": 120,
         "to": 300,
-        "kills": 7370,
-        "damage": 317,
-        "xp": 65693
+        "kills": 6194,
+        "damage": 487,
+        "xp": 56577
       },
       {
         "from": 300,
         "to": 480,
-        "kills": 7453,
-        "damage": 501,
-        "xp": 74661
+        "kills": 9065,
+        "damage": 381,
+        "xp": 92248
       }
     ]
   }

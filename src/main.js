@@ -1,4 +1,4 @@
-import {EchoRiftGame,WORLD} from "./game.js";
+import {EchoRiftGame,WORLD,portraitCameraFocus} from "./game.js";
 
 const app=document.querySelector("#app"),canvas=document.querySelector("#game"),ctx=canvas.getContext("2d");
 const startPanel=document.querySelector("#start"),upgradePanel=document.querySelector("#upgrade"),resultPanel=document.querySelector("#result");
@@ -23,10 +23,9 @@ function setWorldCamera(){
  const scale=portrait?canvas.width/420:Math.max(canvas.width/WORLD.width,canvas.height/WORLD.height);
  const vw=canvas.width/scale,vh=canvas.height/scale,p=game.player;
  // ワールド端では戦場側を広く見せる。カメラ倍率は変えず位置のみ調整する。
- const edgeX=portrait?Math.max(-1,Math.min(1,(p.x-WORLD.width/2)/400))*105:0;
- const edgeY=portrait?Math.max(-1,Math.min(1,(p.y-WORLD.height/2)/260))*68:0;
- const camX=portrait?p.x-edgeX:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
- const camY=portrait?p.y-edgeY:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
+ const focus=portraitCameraFocus(p);
+ const camX=portrait?focus.x:(vw>=WORLD.width?WORLD.width/2:Math.max(vw/2,Math.min(WORLD.width-vw/2,p.x)));
+ const camY=portrait?focus.y:(vh>=WORLD.height?WORLD.height/2:Math.max(vh/2,Math.min(WORLD.height-vh/2,p.y)));
  ctx.setTransform(scale,0,0,scale,canvas.width/2-camX*scale,canvas.height/2-camY*scale);
 }
 
