@@ -4,7 +4,7 @@ import {readFile} from "node:fs/promises";
 import {extname,join} from "node:path";
 const root=new URL("../",import.meta.url).pathname;
 const types={".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8"};
-const server=createServer(async(req,res)=>{try{const path=req.url==="/"?"index.html":req.url.slice(1);const data=await readFile(join(root,path));res.writeHead(200,{"content-type":types[extname(path)]||"application/octet-stream"});res.end(data)}catch{res.writeHead(404);res.end("not found")}});
+const server=createServer(async(req,res)=>{try{const urlPath=new URL(req.url,"http://localhost").pathname;const path=urlPath==="/"?"index.html":urlPath.slice(1);const data=await readFile(join(root,path));res.writeHead(200,{"content-type":types[extname(path)]||"application/octet-stream"});res.end(data)}catch{res.writeHead(404);res.end("not found")}});
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
 const port=server.address().port,base="http://127.0.0.1:"+port;
 const browser=await chromium.launch({headless:true,executablePath:"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"});

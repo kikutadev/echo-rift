@@ -8,7 +8,7 @@ const root=new URL("../",import.meta.url).pathname;
 const types={".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8"};
 const server=createServer(async(req,res)=>{
  try{
-  const file=req.url==="/"?"index.html":req.url.slice(1);
+  const urlPath=new URL(req.url,"http://localhost").pathname;const file=urlPath==="/"?"index.html":urlPath.slice(1);
   const data=await readFile(join(root,file));
   res.writeHead(200,{"content-type":types[extname(file)]||"application/octet-stream"});res.end(data);
  }catch{res.writeHead(404);res.end("not found")}
